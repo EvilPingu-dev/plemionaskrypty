@@ -533,7 +533,6 @@ save_as_file: function (content) {
     const header = lines.shift().split(",");
 
     const playerIdx  = header.indexOf("player_name");
-    const villageIdx = header.indexOf("village_name");
     const coordsIdx  = header.indexOf("coords");
     const pointsIdx  = header.indexOf("points");
     const firstBuildingIdx = pointsIdx + 1;
@@ -547,7 +546,6 @@ save_as_file: function (content) {
         const cols = line.split(",");
 
         const player = cols[playerIdx].replace(/"/g, "");
-        const village = cols[villageIdx].replace(/"/g, "");
         const coords = cols[coordsIdx];
         const points = parseInt(cols[pointsIdx].replace(/\./g, ""), 10) || 0;
         const buildings = cols.slice(firstBuildingIdx);
@@ -561,7 +559,6 @@ save_as_file: function (content) {
 
         players[player].totalPoints += points;
         players[player].villages.push({
-            village,
             coords,
             points,
             buildings
@@ -574,7 +571,8 @@ save_as_file: function (content) {
 
     // BBCode Header
     let output = "[table]\n";
-    output += "[**]Gracz[||]Wioska[||]Koordynaty[||]Punkty";
+    output += "[**]";
+    output += "Gracz[||]Koordynaty[||]Punkty";
 
     for (const b of buildingNames) {
         const clean = b.replace(".webp", "");
@@ -588,7 +586,6 @@ save_as_file: function (content) {
         for (const v of data.villages) {
             output += "[*]";
             output += `[player]${player}[/player][|]`;
-            output += `${v.village}[|]`;
             output += `[coord]${v.coords}[/coord][|]`;
             output += `${v.points}`;
 
@@ -608,6 +605,7 @@ save_as_file: function (content) {
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
+
 
 
 
