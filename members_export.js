@@ -529,10 +529,27 @@
             return [table, skipped_players];
         },
 save_as_file: function (content) {
-    const lines = content.split("\n");
+    let lines = content.split("\n");
     const header = lines.shift().split(",");
 
-    // BBCode Header mit building‑Tags
+    // CSV → Array von Objekten
+    let rows = [];
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        const cols = line.split(",");
+        rows.push({
+            player: cols[0].replace(/"/g, ""),
+            village: cols[1].replace(/"/g, ""),
+            coords: cols[2],
+            points: Number(cols[3]),
+            buildings: cols.slice(4)
+        });
+    }
+
+    // SORTIERUNG NACH PUNKTEN (DESC)
+    rows.sort((a, b) => b.points - a.points);
+
+    // BBCode Header
     let output = "[table]\n";
     output += "[**]";
     output += "Gracz[||]Wioska[||]Koordynaty[||]Punkty";
@@ -547,23 +564,14 @@ save_as_file: function (content) {
     output += "[/**]\n";
 
     // BBCode Rows
-    for (const line of lines) {
-        if (!line.trim()) continue;
-        const cols = line.split(",");
-
-        const player = cols[0].replace(/"/g, "");
-        const village = cols[1].replace(/"/g, "");
-        const coords = cols[2];
-        const points = cols[3];
-        const buildings = cols.slice(4);
-
+    for (const row of rows) {
         output += "[*]";
-        output += `[player]${player}[/player][|]`;
-        output += `${village}[|]`;
-        output += `[coord]${coords}[/coord][|]`;
-        output += `${points}`;
+        output += `[player]${row.player}[/player][|]`;
+        output += `${row.village}[|]`;
+        output += `[coord]${row.coords}[/coord][|]`;
+        output += `${row.points}`;
 
-        for (const val of buildings) {
+        for (const val of row.buildings) {
             output += `[|]${val}`;
         }
 
@@ -574,7 +582,7 @@ save_as_file: function (content) {
 
     const gui =
         `<h2>BBCode – zum Kopieren</h2>
-        <p>Fertig formatiert für Forum / Discord / TW</p>
+        <p>Sortiert nach punktstärksten Dörfern (DESC)</p>
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
