@@ -18,7 +18,6 @@
             export_option: 'Opcje exportu',
             members_troops: 'Wojska',
             members_buildings: 'Budynki',
-            members_defense: 'Obrona',
             export: 'Export'
         },
         TITLE: 'Hermitowscy Cz\u{142}onkowie',
@@ -183,7 +182,6 @@
             const response_mappers = {
                 members_troops: AllyMembers.map_member_troops,
                 members_buildings: AllyMembers.map_member_buildings,
-                members_defense: AllyMembers.map_member_defense,
             };
             for (const export_name in members_info) {
                 for (const member of members_info[export_name]) {
@@ -629,7 +627,8 @@ save_as_file: function (content) {
 
     if (hasBuildings) {
         for (const b of AllyMembers.building_names) {
-            output += `[||][building]${b}[/building]`;
+			output += `[||]${b.replace(".webp", "")}`;
+
         }
     }
 
@@ -753,7 +752,7 @@ save_as_file: function (content) {
         },
         throttle_ms: 50,
         concurrent_requests: 4,
-        export_options: ['members_troops', 'members_buildings', 'members_defense'],
+        export_options: ['members_troops', 'members_buildings'],
         building_names: null
     };
     try { await AllyMembers.main(); } catch (ex) { Helper.handle_error(ex); }
