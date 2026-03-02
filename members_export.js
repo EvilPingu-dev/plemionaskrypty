@@ -528,24 +528,27 @@
         },
 
 save_as_file: function (content) {
+
+    // CSV einlesen
     let lines = content.split("\n");
     const header = lines.shift().split(",");
 
-    // Indexe der Grundspalten
+    // Grundspalten
     const playerIdx = header.indexOf("player_name");
     const coordsIdx = header.indexOf("coords");
     const pointsIdx = header.indexOf("points");
 
-    // Welche Exportarten sind aktiv?
+    // Export-Arten erkennen
     const hasTroops = game_data.units.some(u => header.includes(u));
-    const hasBuildings = header.includes("main"); // .webp entfernt
+    const hasBuildings = header.some(h => h.includes("main")); // egal ob .webp oder nicht
     const hasDefense = header.includes("village_spear");
 
-    // Startindex für dynamische Spalten bestimmen
+    // Startindex für dynamische Spalten
+    // CSV: player, village, coords, incoming, outgoing, spear, sword, axe...
     let firstDynamicIdx = 3; // nach coords
 
     if (hasTroops) {
-        firstDynamicIdx = 5; // incoming + outgoing überspringen
+        firstDynamicIdx = 5; // spear beginnt nach incoming + outgoing
     } else if (hasBuildings) {
         firstDynamicIdx = 4; // coords + points
     }
@@ -583,7 +586,7 @@ save_as_file: function (content) {
 
         let idx = firstDynamicIdx;
 
-        // Truppen
+        // Truppen einlesen
         if (hasTroops) {
             for (const unit of game_data.units) {
                 villageData.troops[unit] = cols[idx] || "";
@@ -591,16 +594,16 @@ save_as_file: function (content) {
             }
         }
 
-        // Gebäude
+        // Gebäude einlesen
         if (hasBuildings) {
             for (const bName of AllyMembers.building_names) {
-                const cleanName = bName.replace(".webp", "");
+                const cleanName = bName.replace(".webp", "").replace(".png", "");
                 villageData.buildings[cleanName] = cols[idx] || "";
                 idx++;
             }
         }
 
-        // Verteidigung
+        // Verteidigung einlesen
         if (hasDefense) {
             for (const unit of game_data.units) {
                 villageData.defenseVillage[unit] = cols[idx] || "";
@@ -632,7 +635,7 @@ save_as_file: function (content) {
 
     if (hasBuildings) {
         for (const b of AllyMembers.building_names) {
-            const cleanName = b.replace(".webp", "");
+            const cleanName = b.replace(".webp", "").replace(".png", "");
             output += `[||][building]${cleanName}[/building]`;
         }
     }
@@ -664,7 +667,7 @@ save_as_file: function (content) {
 
             if (hasBuildings) {
                 for (const b of AllyMembers.building_names) {
-                    const cleanName = b.replace(".webp", "");
+                    const cleanName = b.replace(".webp", "").replace(".png", "");
                     output += `[|]${v.buildings[cleanName]}`;
                 }
             }
@@ -690,6 +693,7 @@ save_as_file: function (content) {
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
+
 
 
 
