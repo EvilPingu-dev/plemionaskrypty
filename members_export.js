@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         TW Members Export (Dark Premium UI)
-// @version      1.0
+// @version      1.1
 // @description  Export Wojska / Budynki / Obrona in modernem Popup
 // @author       EvilPingu
 // ==/UserScript==
@@ -9,7 +9,7 @@
     "use strict";
 
     /* ---------------------------------------------------------
-     *  MODULE 1 — UI MANAGER (Button, Popup, Styling)
+     *  UI MANAGER
      * --------------------------------------------------------- */
     class UIManager {
         static injectStyles() {
@@ -97,6 +97,7 @@
                 padding: 20px;
                 border-radius: 10px;
                 box-shadow: 0 0 20px rgba(0,0,0,0.5);
+                font-family: Arial, sans-serif;
             }
 
             table.twexp-table {
@@ -114,6 +115,7 @@
             table.twexp-table td {
                 padding: 6px;
                 border-bottom: 1px solid #333;
+                vertical-align: top;
             }
 
             .twexp-copy-btn {
@@ -124,6 +126,9 @@
                 cursor: pointer;
                 margin-bottom: 10px;
             }
+            .twexp-copy-btn:hover {
+                background: #099;
+            }
             `;
             const style = document.createElement("style");
             style.textContent = css;
@@ -131,6 +136,8 @@
         }
 
         static createMainButton(onClick) {
+            if (document.querySelector(".twexp-btn")) return; // nicht doppelt
+
             const btn = document.createElement("div");
             btn.className = "twexp-btn";
             btn.innerHTML = "🧩 Export";
@@ -149,7 +156,11 @@
             overlay.appendChild(popup);
             document.body.appendChild(overlay);
 
-            return overlay;
+            overlay.addEventListener("click", e => {
+                if (e.target === overlay) overlay.remove();
+            });
+
+            return { overlay, popup };
         }
 
         static showTablePopup(html) {
@@ -177,17 +188,16 @@
     }
 
     /* ---------------------------------------------------------
-     *  MODULE 2 — DATA FETCHER
+     *  DATA FETCHER
      * --------------------------------------------------------- */
     class DataFetcher {
         static async fetchPage(url) {
-            const res = await fetch(url);
+            const res = await fetch(url, { credentials: "include" });
             return await res.text();
         }
 
         static async getMembers() {
-            const url = "/game.php?screen=info_ally&mode=members";
-            return await this.fetchPage(url);
+            return await this.fetchPage("/game.php?screen=info_ally&mode=members");
         }
 
         static async getTroops(id) {
@@ -204,40 +214,45 @@
     }
 
     /* ---------------------------------------------------------
-     *  MODULE 3 — PARSER
+     *  PARSER
      * --------------------------------------------------------- */
     class Parser {
         static parseMembers(html) {
             const doc = new DOMParser().parseFromString(html, "text/html");
-            const rows = [...doc.querySelectorAll("#ally_content table tbody tr")].slice(1);
+            const table = doc.querySelector("#ally_content table");
+            if (!table) return [];
 
+            const rows = [...table.querySelectorAll("tbody tr")].slice(1);
             return rows.map(r => {
-                const a = r.querySelector("a");
+                const a = r.querySelector("a[href*='player_id']");
+                if (!a) return null;
+                const url = new URL(a.href, location.origin);
                 return {
-                    id: new URL(a.href).searchParams.get("player_id"),
+                    id: url.searchParams.get("player_id"),
                     name: a.textContent.trim()
                 };
-            });
+            }).filter(Boolean);
         }
 
-        static extractTable(html) {
+        static extractFirstTable(html) {
             const doc = new DOMParser().parseFromString(html, "text/html");
             const table = doc.querySelector("table");
-            return table ? table.outerHTML : "<p>Keine Daten</p>";
+            return table ? table.outerHTML : "<p>Brak danych</p>";
         }
     }
 
     /* ---------------------------------------------------------
-     *  MODULE 4 — TABLE BUILDER
+     *  TABLE BUILDER
      * --------------------------------------------------------- */
     class TableBuilder {
         static build(title, rows) {
             let html = `<h2>${title}</h2>`;
             html += `<table class="twexp-table">`;
+            html += `<tr><th>Gracz</th><th>Dane</th></tr>`;
 
-            rows.forEach(row => {
+            for (const row of rows) {
                 html += `<tr><td>${row.name}</td><td>${row.data}</td></tr>`;
-            });
+            }
 
             html += `</table>`;
             return html;
@@ -245,7 +260,7 @@
     }
 
     /* ---------------------------------------------------------
-     *  MODULE 5 — MAIN APP
+     *  APP
      * --------------------------------------------------------- */
     class App {
         static init() {
@@ -254,8 +269,8 @@
         }
 
         static openMenu() {
-            const popup = UIManager.showPopup(`
-                <div class="twexp-title">Mitglieder Export</div>
+            const { overlay, popup } = UIManager.showPopup(`
+                <div class="twexp-title">Eksport członków</div>
 
                 <div class="twexp-switch">
                     <span>Wojska</span>
@@ -272,25 +287,26 @@
                     <input type="checkbox" id="exp-obrona" checked>
                 </div>
 
-                <button class="twexp-export-btn" id="twexp-start">Exportieren</button>
+                <button class="twexp-export-btn" id="twexp-start">Export</button>
             `);
 
-popup.querySelector("#twexp-start").onclick = () => {
-    const wantTroops = popup.querySelector("#exp-wojska").checked;
-    const wantBuildings = popup.querySelector("#exp-budynki").checked;
-    const wantDefense = popup.querySelector("#exp-obrona").checked;
-    this.startExport(wantTroops, wantBuildings, wantDefense);
-    popup.remove();
+            const startBtn = popup.querySelector("#twexp-start");
+            const cbTroops = popup.querySelector("#exp-wojska");
+            const cbBuildings = popup.querySelector("#exp-budynki");
+            const cbDefense = popup.querySelector("#exp-obrona");
 
-};
+            startBtn.onclick = () => {
+                const wantTroops = cbTroops.checked;
+                const wantBuildings = cbBuildings.checked;
+                const wantDefense = cbDefense.checked;
 
+                overlay.remove(); // Popup weg
+                this.startExport(wantTroops, wantBuildings, wantDefense);
+            };
         }
 
-        static async startExport() {
-            const wantTroops = document.querySelector("#exp-wojska").checked;
-            const wantBuildings = document.querySelector("#exp-budynki").checked;
-            const wantDefense = document.querySelector("#exp-obrona").checked;
-
+        static async startExport(wantTroops, wantBuildings, wantDefense) {
+            // hier KEIN document.querySelector mehr!
             const membersHTML = await DataFetcher.getMembers();
             const members = Parser.parseMembers(membersHTML);
 
@@ -301,21 +317,21 @@ popup.querySelector("#twexp-start").onclick = () => {
 
                 if (wantTroops) {
                     const t = await DataFetcher.getTroops(m.id);
-                    data += "<h4>Wojska</h4>" + Parser.extractTable(t);
+                    data += `<h4>Wojska</h4>${Parser.extractFirstTable(t)}`;
                 }
                 if (wantBuildings) {
                     const b = await DataFetcher.getBuildings(m.id);
-                    data += "<h4>Budynki</h4>" + Parser.extractTable(b);
+                    data += `<h4>Budynki</h4>${Parser.extractFirstTable(b)}`;
                 }
                 if (wantDefense) {
                     const d = await DataFetcher.getDefense(m.id);
-                    data += "<h4>Obrona</h4>" + Parser.extractTable(d);
+                    data += `<h4>Obrona</h4>${Parser.extractFirstTable(d)}`;
                 }
 
                 rows.push({ name: m.name, data });
             }
 
-            const html = TableBuilder.build("Export", rows);
+            const html = TableBuilder.build("Eksport", rows);
             UIManager.showTablePopup(html);
         }
     }
