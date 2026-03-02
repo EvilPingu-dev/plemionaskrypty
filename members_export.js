@@ -532,42 +532,49 @@ save_as_file: function (content) {
     let lines = content.split("\n");
     const header = lines.shift().split(",");
 
-    // Indexe dynamisch aus Header holen
     const playerIdx  = header.indexOf("player_name");
     const villageIdx = header.indexOf("village_name");
     const coordsIdx  = header.indexOf("coords");
-    const pointsIdx  = header.indexOf("points") !== -1
-        ? header.indexOf("points")
-        : header.indexOf("Punkty");
-
+    const pointsIdx  = header.indexOf("points");
     const firstBuildingIdx = pointsIdx + 1;
     const buildingNames = header.slice(firstBuildingIdx);
 
-    // CSV → Array von Objekten
-    let rows = [];
+    // Spieler → Liste von Dörfern
+    const players = {};
+
     for (const line of lines) {
         if (!line.trim()) continue;
         const cols = line.split(",");
 
-        const pointsRaw = cols[pointsIdx] || "0";
-        const pointsNum = parseInt(pointsRaw.replace(/\./g, ""), 10) || 0;
+        const player = cols[playerIdx].replace(/"/g, "");
+        const village = cols[villageIdx].replace(/"/g, "");
+        const coords = cols[coordsIdx];
+        const points = parseInt(cols[pointsIdx].replace(/\./g, ""), 10) || 0;
+        const buildings = cols.slice(firstBuildingIdx);
 
-        rows.push({
-            player: cols[playerIdx].replace(/"/g, ""),
-            village: cols[villageIdx].replace(/"/g, ""),
-            coords: cols[coordsIdx],
-            points: pointsNum,
-            buildings: cols.slice(firstBuildingIdx)
+        if (!players[player]) {
+            players[player] = {
+                totalPoints: 0,
+                villages: []
+            };
+        }
+
+        players[player].totalPoints += points;
+        players[player].villages.push({
+            village,
+            coords,
+            points,
+            buildings
         });
     }
 
-    // SORTIERUNG NACH PUNKTEN (DESC)
-    rows.sort((a, b) => b.points - a.points);
+    // Spieler nach Gesamtpunkten sortieren
+    const sortedPlayers = Object.entries(players)
+        .sort((a, b) => b[1].totalPoints - a[1].totalPoints);
 
     // BBCode Header
     let output = "[table]\n";
-    output += "[**]";
-    output += "Gracz[||]Wioska[||]Koordynaty[||]Punkty";
+    output += "[**]Gracz[||]Wioska[||]Koordynaty[||]Punkty";
 
     for (const b of buildingNames) {
         const clean = b.replace(".webp", "");
@@ -576,29 +583,32 @@ save_as_file: function (content) {
 
     output += "[/**]\n";
 
-    // BBCode Rows
-    for (const row of rows) {
-        output += "[*]";
-        output += `[player]${row.player}[/player][|]`;
-        output += `${row.village}[|]`;
-        output += `[coord]${row.coords}[/coord][|]`;
-        output += `${row.points}`;
+    // BBCode Rows – gruppiert nach Spieler
+    for (const [player, data] of sortedPlayers) {
+        for (const v of data.villages) {
+            output += "[*]";
+            output += `[player]${player}[/player][|]`;
+            output += `${v.village}[|]`;
+            output += `[coord]${v.coords}[/coord][|]`;
+            output += `${v.points}`;
 
-        for (const val of row.buildings) {
-            output += `[|]${val}`;
+            for (const val of v.buildings) {
+                output += `[|]${val}`;
+            }
+
+            output += "\n";
         }
-
-        output += "\n";
     }
 
     output += "[/table]";
 
     const gui =
         `<h2>BBCode – zum Kopieren</h2>
-        <p>Sortiert nach Punkty (DESC)</p>
+        <p>Sortiert nach Gesamtpunkten pro Spieler (DESC)</p>
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
+
 
 
         time_wrapper: async function (task) {
