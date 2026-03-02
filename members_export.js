@@ -1,11 +1,7 @@
-/**
- * Exporting data about ally members into CSV → now BBCode
- * Modified by Mateusz version (no defense, troops v1)
- */
-
 (async function (TribalWars) {
     const start = Date.now();
     const namespace = 'Hermitowski.Members';
+
     const i18n = {
         ERROR: {
             NO_ALLY: 'Jesteś poza plemieniem',
@@ -55,6 +51,11 @@
     };
 
     const AllyMembers = {
+        export_options: ['members_troops', 'members_buildings'],
+        building_names: null,
+        throttle_ms: 50,
+        concurrent_requests: 4,
+
         create_ui: function () {
             const container = document.createElement('div');
             container.id = Helper.get_id('container');
@@ -121,12 +122,66 @@
             export_button.addEventListener('click', AllyMembers.export);
         },
 
+        save_settings: function () {
+            const settings = {};
+            for (const export_option of AllyMembers.export_options) {
+                const control = Helper.get_control(export_option);
+                settings[export_option] = control.checked;
+            }
+            localStorage.setItem(namespace + '.settings', JSON.stringify(settings));
+        },
+
+        load_settings: function () {
+            const raw = localStorage.getItem(namespace + '.settings');
+            if (!raw) return;
+            try {
+                const settings = JSON.parse(raw);
+                for (const export_option of AllyMembers.export_options) {
+                    if (settings.hasOwnProperty(export_option)) {
+                        const control = Helper.get_control(export_option);
+                        control.checked = settings[export_option];
+                    }
+                }
+            } catch (e) {
+                // ignore
+            }
+        },
+
+        disable_export: function () {
+            const export_button = Helper.get_control('export_button');
+            const options = AllyMembers.get_export_options();
+            const anyChecked = Object.values(options).some(v => v);
+            export_button.disabled = !anyChecked;
+        },
+
+        print_progress: function (text) {
+            const progress = Helper.get_control('progress');
+            progress.textContent = text;
+        },
+
+        time_wrapper: function (promise) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    promise.then(resolve).catch(reject);
+                }, AllyMembers.throttle_ms);
+            });
+        },
+
         init: async function () {
             AllyMembers.create_ui();
             AllyMembers.create_controls();
             AllyMembers.load_settings();
             AllyMembers.disable_export();
             AllyMembers.add_handlers();
+        },
+
+        get_export_options: function () {
+            const export_options = {};
+            for (const export_option of AllyMembers.export_options) {
+                const control = Helper.get_control(export_option);
+                export_options[export_option] = control.checked;
+            }
+            return export_options;
         },
 
         export: async function () {
@@ -154,15 +209,6 @@
             } finally {
                 export_button.disabled = false;
             }
-        },
-
-        get_export_options: function () {
-            const export_options = {};
-            for (const export_option of AllyMembers.export_options) {
-                const control = Helper.get_control(export_option);
-                export_options[export_option] = control.checked;
-            }
-            return export_options;
         },
 
         get_members_info: async function (export_options) {
@@ -300,12 +346,11 @@
                 row_data.village_name = row.cells[0].innerText.trim();
                 row_data.coords = row.cells[0].innerText.match(/\d+\|\d+/g).pop();
 
-                // skip incoming/outgoing → start at units
+                // cells: 0 = village, 1 = incoming, 2 = outgoing, ab 3 = units
                 let idx = 3;
-
                 for (const unit of game_data.units) {
-                    row_data.units[unit] = row.cells[idx].innerText.trim() === '?' ?
-                        '' : Number(row.cells[idx].innerText);
+                    const val = row.cells[idx].innerText.trim();
+                    row_data.units[unit] = val === '?' ? '' : Number(val);
                     idx++;
                 }
 
@@ -405,7 +450,7 @@
                     }
 
                     members_info[member.player_id].access_granted[export_name] =
-                        member.access_granted;
+                        member.access_granted[export_name] ?? member.access_granted;
                 }
             }
 
@@ -498,4 +543,137 @@
             return [table, skipped_players];
         },
 
-       save_as_file: function (content) { const lines = content.split("\n"); const header = lines.shift().split(","); const playerIdx = header.indexOf("player_name"); const coordsIdx = header.indexOf("coords"); const pointsIdx = header.indexOf("points"); const isTroops = game_data.units.some(u => header.includes(u)); const isBuildings = header.includes("main"); const players = {}; for (const line of lines) { if (!line.trim()) continue; const cols = line.split(","); const player = cols[playerIdx]?.replace(/"/g, "") || "???"; const coords = cols[coordsIdx] || "0|0"; let points = 0; if (isBuildings && pointsIdx !== -1 && typeof cols[pointsIdx] === "string") { const cleaned = cols[pointsIdx].replace(/\./g, ""); const parsed = parseInt(cleaned, 10); if (!isNaN(parsed)) points = parsed; } if (!players[player]) { players[player] = { totalPoints: 0, villages: [] }; } const villageData = { coords, points, troops: {}, buildings: {} }; let idx = coordsIdx + 1; // TROOPS (skip incoming + outgoing) if (isTroops) { idx += 2; for (const unit of game_data.units) { villageData.troops[unit] = cols[idx] || ""; idx++; } } // BUILDINGS if (isBuildings) { idx = pointsIdx + 1; for (let i = 0; i < AllyMembers.building_names.length; i++) { const bName = AllyMembers.building_names[i]; villageData.buildings[bName] = cols[idx] || ""; idx++; } } players[player].totalPoints += points; players[player].villages.push(villageData); } // SORTIERUNG NACH GESAMTPUNKTEN const sortedPlayers = Object.entries(players) .sort((a, b) => b[1].totalPoints - a[1].totalPoints); // BBCode HEADER let output = "[table]\n"; output += "[**]Gracz[||]Koordynaty[||]Punkty"; if (isTroops) { for (const unit of game_data.units) { output += `[||][unit]${unit}[/unit]`; } } if (isBuildings) { for (const b of AllyMembers.building_names) { output += `[||][building]${b}[/building]`; } } output += "[/**]\n"; // BBCode ROWS for (const [player, data] of sortedPlayers) { for (const v of data.villages) { output += "[*]"; output += `[player]${player}[/player][|]`; output += `[coord]${v.coords}[/coord][|]`; output += `${v.points}`; if (isTroops) { for (const unit of game_data.units) { output += `[|]${v.troops[unit]}`; } } if (isBuildings) { for (const b of AllyMembers.building_names) { output += `[|]${v.buildings[b]}`; } } output += "\n"; } } output += "[/table]"; const gui = `<h2>BBCode – zum Kopieren</h2> <p>Sortiert nach Gesamtpunkten pro Spieler (DESC)</p> <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`; Dialog.show(namespace + ".bbcode_output", gui); }, throttle_ms: 50, concurrent_requests: 4, // DEFENSE ENTFERNT export_options: ['members_troops', 'members_buildings'], building_names: null }; try { await AllyMembers.main(); } catch (ex) { Helper.handle_error(ex); } console.log( `%c${namespace} | Elapsed time: ${Date.now() - start} [ms]`, "background-color:black;color:lime;font-family:'Courier New';padding:5px" ); })(TribalWars);
+        save_as_file: function (content) {
+            const lines = content.split("\n");
+            const header = lines.shift().split(",");
+
+            const playerIdx = header.indexOf("player_name");
+            const coordsIdx = header.indexOf("coords");
+            const pointsIdx = header.indexOf("points");
+
+            const isTroops = game_data.units.some(u => header.includes(u));
+            const isBuildings = header.includes("main");
+
+            const players = {};
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                const cols = line.split(",");
+
+                const player = cols[playerIdx]?.replace(/"/g, "") || "???";
+                const coords = cols[coordsIdx] || "0|0";
+
+                let points = 0;
+                if (isBuildings && pointsIdx !== -1 && typeof cols[pointsIdx] === "string") {
+                    const cleaned = cols[pointsIdx].replace(/\./g, "");
+                    const parsed = parseInt(cleaned, 10);
+                    if (!isNaN(parsed)) points = parsed;
+                }
+
+                if (!players[player]) {
+                    players[player] = {
+                        totalPoints: 0,
+                        villages: []
+                    };
+                }
+
+                const villageData = {
+                    coords,
+                    points,
+                    troops: {},
+                    buildings: {}
+                };
+
+                // TROOPS (skip incoming + outgoing)
+                if (isTroops) {
+                    let idx = coordsIdx + 1; // incoming
+                    idx += 2; // skip incoming + outgoing
+                    for (const unit of game_data.units) {
+                        villageData.troops[unit] = cols[idx] || "";
+                        idx++;
+                    }
+                }
+
+                // BUILDINGS
+                if (isBuildings) {
+                    let idx = pointsIdx + 1;
+                    for (let i = 0; i < AllyMembers.building_names.length; i++) {
+                        const bName = AllyMembers.building_names[i];
+                        villageData.buildings[bName] = cols[idx] || "";
+                        idx++;
+                    }
+                }
+
+                players[player].totalPoints += points;
+                players[player].villages.push(villageData);
+            }
+
+            const sortedPlayers = Object.entries(players)
+                .sort((a, b) => b[1].totalPoints - a[1].totalPoints);
+
+            let output = "[table]\n";
+            output += "[**]Gracz[||]Koordynaty[||]Punkty";
+
+            if (isTroops) {
+                for (const unit of game_data.units) {
+                    output += `[||][unit]${unit}[/unit]`;
+                }
+            }
+
+            if (isBuildings) {
+                for (const b of AllyMembers.building_names) {
+                    output += `[||][building]${b}[/building]`;
+                }
+            }
+
+            output += "[/**]\n";
+
+            for (const [player, data] of sortedPlayers) {
+                for (const v of data.villages) {
+                    output += "[*]";
+                    output += `[player]${player}[/player][|]`;
+                    output += `[coord]${v.coords}[/coord][|]`;
+                    output += `${v.points}`;
+
+                    if (isTroops) {
+                        for (const unit of game_data.units) {
+                            output += `[|]${v.troops[unit]}`;
+                        }
+                    }
+
+                    if (isBuildings) {
+                        for (const b of AllyMembers.building_names) {
+                            output += `[|]${v.buildings[b]}`;
+                        }
+                    }
+
+                    output += "\n";
+                }
+            }
+
+            output += "[/table]";
+
+            const gui =
+                `<h2>BBCode – zum Kopieren</h2>
+                <p>Sortiert nach Gesamtpunkten pro Spieler (DESC)</p>
+                <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
+            Dialog.show(namespace + ".bbcode_output", gui);
+        },
+
+        main: async function () {
+            if (!game_data.player.ally_id) {
+                throw i18n.ERROR.NO_ALLY;
+            }
+            await AllyMembers.init();
+        }
+    };
+
+    try { await AllyMembers.main(); }
+    catch (ex) { Helper.handle_error(ex); }
+
+    console.log(
+        `%c${namespace} | Elapsed time: ${Date.now() - start} [ms]`,
+        "background-color:black;color:lime;font-family:'Courier New';padding:5px"
+    );
+
+})(TribalWars);
