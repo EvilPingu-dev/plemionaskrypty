@@ -279,9 +279,9 @@ popup.querySelector("#twexp-start").onclick = () => {
     const wantTroops = popup.querySelector("#exp-wojska").checked;
     const wantBuildings = popup.querySelector("#exp-budynki").checked;
     const wantDefense = popup.querySelector("#exp-obrona").checked;
-
-    popup.remove();
     this.startExport(wantTroops, wantBuildings, wantDefense);
+    popup.remove();
+
 };
 
         }
