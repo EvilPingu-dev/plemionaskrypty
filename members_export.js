@@ -275,10 +275,15 @@
                 <button class="twexp-export-btn" id="twexp-start">Exportieren</button>
             `);
 
-            popup.querySelector("#twexp-start").onclick = () => {
-                popup.remove();
-                this.startExport();
-            };
+popup.querySelector("#twexp-start").onclick = () => {
+    const wantTroops = popup.querySelector("#exp-wojska").checked;
+    const wantBuildings = popup.querySelector("#exp-budynki").checked;
+    const wantDefense = popup.querySelector("#exp-obrona").checked;
+
+    popup.remove();
+    this.startExport(wantTroops, wantBuildings, wantDefense);
+};
+
         }
 
         static async startExport() {
