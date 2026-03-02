@@ -534,18 +534,14 @@ save_as_file: function (content) {
 
     const playerIdx = header.indexOf("player_name");
     const coordsIdx = header.indexOf("coords");
-    const pointsIdx = header.indexOf("points");
 
-    const hasTroops = game_data.units.some(u => header.includes(u));
-    const hasBuildings = AllyMembers.building_names.length > 0;
+    // kaputte Truppen-CSV:
+    // player, village, coords, incoming, outgoing, spear(points!), sword(spear), axe(sword), ...
+    const hasTroops = header.includes("spear");
     const hasDefense = header.includes("village_spear");
 
-    // --- WICHTIGER FIX ---
-    // spear steht IMMER an der ersten Unit-Spalte
-    const firstUnitIdx = header.indexOf(game_data.units[0]);
-
-    // Gebäude beginnen direkt nach points
-    const firstBuildingIdx = pointsIdx + 1;
+    // buildings können null sein → absichern
+    const hasBuildings = Array.isArray(AllyMembers.building_names) && AllyMembers.building_names.length > 0;
 
     const players = {};
 
@@ -556,9 +552,10 @@ save_as_file: function (content) {
         const player = cols[playerIdx]?.replace(/"/g, "") || "???";
         const coords = cols[coordsIdx] || "0|0";
 
+        // Punkte aus "spear"-Spalte (Index 5) holen
         let points = 0;
-        if (pointsIdx !== -1 && cols[pointsIdx] !== undefined) {
-            points = parseInt(cols[pointsIdx].replace(/\./g, ""), 10) || 0;
+        if (hasTroops && cols[5] !== undefined && cols[5] !== "") {
+            points = parseInt(cols[5].replace(/\./g, ""), 10) || 0;
         }
 
         if (!players[player]) {
@@ -574,18 +571,22 @@ save_as_file: function (content) {
             defenseTransit: {}
         };
 
-        // --- TRUPPEN KORREKT EINLESEN ---
+        // Truppen: ab Index 6, alles um 1 nach links geschoben
         if (hasTroops) {
-            let idx = firstUnitIdx;
+            let idx = 6; // hier steht spear
             for (const unit of game_data.units) {
                 villageData.troops[unit] = cols[idx] || "";
                 idx++;
             }
         }
 
-        // --- GEBÄUDE KORREKT EINLESEN ---
+        // Gebäude: nur wenn wirklich vorhanden
         if (hasBuildings) {
-            let idx = firstBuildingIdx;
+            // wir gehen davon aus, dass Gebäude direkt nach Punkten kommen
+            // d.h. nach der "points"-Spalte im CSV-Header
+            const pointsIdx = header.indexOf("points");
+            let idx = pointsIdx !== -1 ? pointsIdx + 1 : 0;
+
             for (const bName of AllyMembers.building_names) {
                 const cleanName = bName.replace(".webp", "").replace(".png", "");
                 villageData.buildings[cleanName] = cols[idx] || "";
@@ -593,7 +594,7 @@ save_as_file: function (content) {
             }
         }
 
-        // --- VERTEIDIGUNG ---
+        // Verteidigung: falls aktiv
         if (hasDefense) {
             let idx = header.indexOf("village_spear");
             for (const unit of game_data.units) {
@@ -610,7 +611,11 @@ save_as_file: function (content) {
         players[player].villages.push(villageData);
     }
 
-    // --- BBCode Ausgabe (unverändert, funktioniert korrekt) ---
+    // Sortierung nach Gesamtpunkten
+    const sortedPlayers = Object.entries(players)
+        .sort((a, b) => b[1].totalPoints - a[1].totalPoints);
+
+    // BBCode Header
     let output = "[table]\n";
     output += "[**]Gracz[||]Koordynaty[||]Punkty";
 
@@ -634,7 +639,8 @@ save_as_file: function (content) {
 
     output += "[/**]\n";
 
-    for (const [player, data] of Object.entries(players).sort((a,b)=>b[1].totalPoints-a[1].totalPoints)) {
+    // BBCode Rows
+    for (const [player, data] of sortedPlayers) {
         for (const v of data.villages) {
             output += "[*]";
             output += `[player]${player}[/player][|]`;
@@ -665,10 +671,13 @@ save_as_file: function (content) {
 
     output += "[/table]";
 
-    Dialog.show(namespace + ".bbcode_output",
+    const gui =
         `<h2>BBCode – zum Kopieren</h2>
-         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`);
+        <p>Sortiert nach Gesamtpunkten pro Spieler (DESC)</p>
+        <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
+    Dialog.show(namespace + ".bbcode_output", gui);
 },
+
 
 
 
