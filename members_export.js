@@ -532,17 +532,32 @@ save_as_file: function (content) {
     let lines = content.split("\n");
     const header = lines.shift().split(",");
 
+    // Indexe dynamisch aus Header holen
+    const playerIdx  = header.indexOf("player_name");
+    const villageIdx = header.indexOf("village_name");
+    const coordsIdx  = header.indexOf("coords");
+    const pointsIdx  = header.indexOf("points") !== -1
+        ? header.indexOf("points")
+        : header.indexOf("Punkty");
+
+    const firstBuildingIdx = pointsIdx + 1;
+    const buildingNames = header.slice(firstBuildingIdx);
+
     // CSV → Array von Objekten
     let rows = [];
     for (const line of lines) {
         if (!line.trim()) continue;
         const cols = line.split(",");
+
+        const pointsRaw = cols[pointsIdx] || "0";
+        const pointsNum = parseInt(pointsRaw.replace(/\./g, ""), 10) || 0;
+
         rows.push({
-            player: cols[0].replace(/"/g, ""),
-            village: cols[1].replace(/"/g, ""),
-            coords: cols[2],
-            points: Number(cols[3]),
-            buildings: cols.slice(4)
+            player: cols[playerIdx].replace(/"/g, ""),
+            village: cols[villageIdx].replace(/"/g, ""),
+            coords: cols[coordsIdx],
+            points: pointsNum,
+            buildings: cols.slice(firstBuildingIdx)
         });
     }
 
@@ -553,8 +568,6 @@ save_as_file: function (content) {
     let output = "[table]\n";
     output += "[**]";
     output += "Gracz[||]Wioska[||]Koordynaty[||]Punkty";
-
-    const buildingNames = header.slice(4); // ab main.webp
 
     for (const b of buildingNames) {
         const clean = b.replace(".webp", "");
@@ -582,10 +595,11 @@ save_as_file: function (content) {
 
     const gui =
         `<h2>BBCode – zum Kopieren</h2>
-        <p>Sortiert nach punktstärksten Dörfern (DESC)</p>
+        <p>Sortiert nach Punkty (DESC)</p>
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
+
 
         time_wrapper: async function (task) {
             const start = Date.now();
