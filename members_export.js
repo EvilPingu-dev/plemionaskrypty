@@ -216,30 +216,52 @@
     /* ---------------------------------------------------------
      *  PARSER
      * --------------------------------------------------------- */
-    class Parser {
-        static parseMembers(html) {
-            const doc = new DOMParser().parseFromString(html, "text/html");
-            const table = doc.querySelector("#ally_content table");
-            if (!table) return [];
+class Parser {
+    static parseMembers(html) {
+        const doc = new DOMParser().parseFromString(html, "text/html");
 
-            const rows = [...table.querySelectorAll("tbody tr")].slice(1);
-            return rows.map(r => {
-                const a = r.querySelector("a[href*='player_id']");
-                if (!a) return null;
-                const url = new URL(a.href, location.origin);
-                return {
-                    id: url.searchParams.get("player_id"),
-                    name: a.textContent.trim()
-                };
-            }).filter(Boolean);
+        // mögliche Tabellen, die Spieler enthalten können
+        const selectors = [
+            "#ally_content table",
+            "table#member_list",
+            "table#ally_members",
+            "table.vis",
+            "table"
+        ];
+
+        let table = null;
+
+        for (const sel of selectors) {
+            const t = doc.querySelector(sel);
+            if (t && t.querySelector("a[href*='player_id']")) {
+                table = t;
+                break;
+            }
         }
 
-        static extractFirstTable(html) {
-            const doc = new DOMParser().parseFromString(html, "text/html");
-            const table = doc.querySelector("table");
-            return table ? table.outerHTML : "<p>Brak danych</p>";
-        }
+        if (!table) return [];
+
+        const rows = [...table.querySelectorAll("tr")].filter(r =>
+            r.querySelector("a[href*='player_id']")
+        );
+
+        return rows.map(r => {
+            const a = r.querySelector("a[href*='player_id']");
+            const url = new URL(a.href, location.origin);
+            return {
+                id: url.searchParams.get("player_id"),
+                name: a.textContent.trim()
+            };
+        });
     }
+
+    static extractFirstTable(html) {
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const table = doc.querySelector("table");
+        return table ? table.outerHTML : "<p>Brak danych</p>";
+    }
+}
+
 
     /* ---------------------------------------------------------
      *  TABLE BUILDER
