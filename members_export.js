@@ -535,14 +535,16 @@ save_as_file: function (content) {
     // Dynamische Indexe
     const playerIdx  = header.indexOf("player_name");
     const coordsIdx  = header.indexOf("coords");
-    const pointsIdx  = header.indexOf("points");
+
+    // Punkte-Spalte dynamisch erkennen
+    const pointsIdx  = header.indexOf("points"); // -1 wenn nicht vorhanden
 
     // Welche Exportarten sind aktiv?
-    const hasTroops    = game_data.units.every(u => header.includes(u) || header.includes(`village_${u}`));
+    const hasTroops    = game_data.units.some(u => header.includes(u));
     const hasBuildings = header.includes("main.webp");
     const hasDefense   = header.includes("village_spear");
 
-    const firstDynamicIdx = pointsIdx + 1;
+    const firstDynamicIdx = (pointsIdx !== -1 ? pointsIdx : coordsIdx) + 1;
 
     // Spieler → Dörfer
     const players = {};
@@ -551,9 +553,14 @@ save_as_file: function (content) {
         if (!line.trim()) continue;
         const cols = line.split(",");
 
-        const player = cols[playerIdx].replace(/"/g, "");
-        const coords = cols[coordsIdx];
-        const points = parseInt(cols[pointsIdx].replace(/\./g, ""), 10) || 0;
+        const player = cols[playerIdx]?.replace(/"/g, "") || "???";
+        const coords = cols[coordsIdx] || "0|0";
+
+        // Punkte nur wenn vorhanden
+        let points = 0;
+        if (pointsIdx !== -1 && cols[pointsIdx] !== undefined) {
+            points = parseInt(cols[pointsIdx].replace(/\./g, ""), 10) || 0;
+        }
 
         if (!players[player]) {
             players[player] = {
@@ -606,7 +613,7 @@ save_as_file: function (content) {
         players[player].villages.push(villageData);
     }
 
-    // Sortierung nach Gesamtpunkten
+    // Sortierung nach Gesamtpunkten (DESC)
     const sortedPlayers = Object.entries(players)
         .sort((a, b) => b[1].totalPoints - a[1].totalPoints);
 
@@ -678,6 +685,13 @@ save_as_file: function (content) {
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
+
+
+
+
+
+
+        
 
 
 
