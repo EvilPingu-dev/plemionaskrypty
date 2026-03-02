@@ -628,6 +628,7 @@ save_as_file: function (content) {
     if (hasBuildings) {
         for (const b of AllyMembers.building_names) {
             output += `[||][building]${b.replace(".webp", "")}[/building]`;
+
         }
     }
 
