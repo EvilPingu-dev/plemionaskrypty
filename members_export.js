@@ -192,7 +192,7 @@
      * --------------------------------------------------------- */
 class DataFetcher {
 
-    // Mitglieder NICHT fetchen – direkt DOM nutzen
+    // Mitglieder werden NICHT gefetcht – direkt aus der aktuellen Seite
     static getMembersDoc() {
         return document;
     }
@@ -223,43 +223,26 @@ class Parser {
 
     static parseMembersFromDoc(doc) {
 
-        // alle möglichen Tabellen, die Spieler enthalten können
-        const selectors = [
-            "#ally_content table",
-            "table#member_list",
-            "table#ally_members",
-            "table.vis",
-            "table"
-        ];
+        // Alle Links im Dokument durchsuchen
+        const links = [...doc.querySelectorAll("a[href*='player_id']")];
 
-        let table = null;
+        const seen = new Set();
+        const members = [];
 
-        for (const sel of selectors) {
-            const t = doc.querySelector(sel);
-            if (!t) continue;
+        for (const a of links) {
+            const url = new URL(a.href, location.origin);
+            const id = url.searchParams.get("player_id");
+            const name = a.textContent.trim();
 
-            // prüfen, ob die Tabelle Spielerzeilen enthält
-            if (t.querySelector("a[href*='player_id']")) {
-                table = t;
-                break;
-            }
+            if (!id) continue;
+            if (!name) continue;
+            if (seen.has(id)) continue;
+
+            seen.add(id);
+            members.push({ id, name });
         }
 
-        if (!table) return [];
-
-        // alle Zeilen mit Spielerlinks
-        const rows = [...table.querySelectorAll("tr")].filter(r =>
-            r.querySelector("a[href*='player_id']")
-        );
-
-        return rows.map(r => {
-            const a = r.querySelector("a[href*='player_id']");
-            const url = new URL(a.href, location.origin);
-            return {
-                id: url.searchParams.get("player_id"),
-                name: a.textContent.trim()
-            };
-        });
+        return members;
     }
 
     static extractFirstTable(html) {
@@ -335,12 +318,12 @@ class Parser {
         }
 
         static async startExport(wantTroops, wantBuildings, wantDefense) {
-            // hier KEIN document.querySelector mehr!
-            //const membersHTML = await DataFetcher.getMembers();
-            //const members = Parser.parseMembers(membersHTML);
-            const membersDoc = DataFetcher.getMembersDoc(); 
-            const members = Parser.parseMembersFromDoc(membersDoc); 
+        
+            const membersDoc = DataFetcher.getMembersDoc();
+            const members = Parser.parseMembersFromDoc(membersDoc);
+            console.log("Test:", membersDoc);
             console.log("Gefundene Mitglieder:", members);
+
             const rows = [];
 
             for (const m of members) {
