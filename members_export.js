@@ -685,7 +685,11 @@ save_as_file: function (content) {
 
     const gui =
         `<h2>BBCode – zum Kopieren</h2>
-        <p>Sortiert nach Gesamt
+        <p>Sortiert nach Gesamtpunkten pro Spieler (DESC)</p>
+        <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
+    Dialog.show(namespace + ".bbcode_output", gui);
+},
+
 
 
 
