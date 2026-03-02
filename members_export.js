@@ -318,37 +318,35 @@ class Parser {
         }
 
         static async startExport(wantTroops, wantBuildings, wantDefense) {
-        
-            const membersDoc = DataFetcher.getMembersDoc();
-            const members = Parser.parseMembersFromDoc(membersDoc);
-            console.log("Test:", membersDoc);
-            console.log("Gefundene Mitglieder:", members);
 
-            const rows = [];
+    const membersDoc = DataFetcher.getMembersDoc();
+    const members = Parser.parseMembersFromDoc(membersDoc);
 
-            for (const m of members) {
-                let data = "";
+    console.log("Gefundene Mitglieder:", members);
 
-                if (wantTroops) {
-                    const t = await DataFetcher.getTroops(m.id);
-                    data += `<h4>Wojska</h4>${Parser.extractFirstTable(t)}`;
-                }
-                if (wantBuildings) {
-                    const b = await DataFetcher.getBuildings(m.id);
-                    data += `<h4>Budynki</h4>${Parser.extractFirstTable(b)}`;
-                }
-                if (wantDefense) {
-                    const d = await DataFetcher.getDefense(m.id);
-                    data += `<h4>Obrona</h4>${Parser.extractFirstTable(d)}`;
-                }
+    // Beispiel: CSV-Header
+    const header = ["player_name", "village_name", "coords"];
+    // Hier je nach Optionen erweitern (analog Original)
 
-                rows.push({ name: m.name, data });
-            }
+    // Beispiel: CSV-Zeilen sammeln
+    const csvLines = [];
+    csvLines.push(header.join(","));
 
-            const html = TableBuilder.build("Eksport", rows);
-            UIManager.showTablePopup(html);
-        }
+    // Beispiel: Füge Dummy-Daten hinzu (hier musst du echte Daten einfügen)
+    for (const member of members) {
+        // Beispielzeile
+        csvLines.push(`"${member.name}","Dorfname","123|456"`);
     }
 
-    App.init();
-})();
+    // Ausgabe als Text im Dialog oder Konsole
+    const csvText = csvLines.join("
+");
+
+    // Zeige Text zum Kopieren an (z.B. in einem Dialog)
+    alert("CSV-Daten zum Kopieren:
+
+" + csvText);
+
+    // Alternativ: in Konsole ausgeben
+    console.log(csvText);
+}
