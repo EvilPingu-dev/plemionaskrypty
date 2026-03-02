@@ -526,6 +526,7 @@
             }
             return [table, skipped_players];
         },
+
 save_as_file: function (content) {
     let lines = content.split("\n");
     const header = lines.shift().split(",");
@@ -689,7 +690,6 @@ save_as_file: function (content) {
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
-
 
 
 
