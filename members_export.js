@@ -532,15 +532,42 @@ save_as_file: function (content) {
     const lines = content.split("\n");
     const header = lines.shift().split(",");
 
-    // BBCode Header
+    // BBCode Header mit building‑Tags
     let output = "[table]\n";
-    output += "[**]" + header.join("[||]") + "[/**]\n";
+    output += "[**]";
+    output += "Gracz[||]Wioska[||]Koordynaty[||]Punkty";
+
+    const buildingNames = header.slice(4); // ab main.webp
+
+    for (const b of buildingNames) {
+        const clean = b.replace(".webp", "");
+        output += `[||][building]${clean}[/building]`;
+    }
+
+    output += "[/**]\n";
 
     // BBCode Rows
     for (const line of lines) {
         if (!line.trim()) continue;
         const cols = line.split(",");
-        output += "[*]" + cols.join("[|]") + "\n";
+
+        const player = cols[0].replace(/"/g, "");
+        const village = cols[1].replace(/"/g, "");
+        const coords = cols[2];
+        const points = cols[3];
+        const buildings = cols.slice(4);
+
+        output += "[*]";
+        output += `[player]${player}[/player][|]`;
+        output += `${village}[|]`;
+        output += `[coord]${coords}[/coord][|]`;
+        output += `${points}`;
+
+        for (const val of buildings) {
+            output += `[|]${val}`;
+        }
+
+        output += "\n";
     }
 
     output += "[/table]";
@@ -551,6 +578,7 @@ save_as_file: function (content) {
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
+
         time_wrapper: async function (task) {
             const start = Date.now();
             const result = await task;
