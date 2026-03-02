@@ -190,37 +190,40 @@
     /* ---------------------------------------------------------
      *  DATA FETCHER
      * --------------------------------------------------------- */
-    class DataFetcher {
-        static async fetchPage(url) {
-            const res = await fetch(url, { credentials: "include" });
-            return await res.text();
-        }
+class DataFetcher {
 
-        static async getMembers() {
-            return await this.fetchPage("/game.php?screen=info_ally&mode=members");
-        }
-
-        static async getTroops(id) {
-            return await this.fetchPage(`/game.php?screen=info_player&mode=units&player_id=${id}`);
-        }
-
-        static async getBuildings(id) {
-            return await this.fetchPage(`/game.php?screen=info_player&mode=buildings&player_id=${id}`);
-        }
-
-        static async getDefense(id) {
-            return await this.fetchPage(`/game.php?screen=info_player&mode=defense&player_id=${id}`);
-        }
+    // Mitglieder NICHT fetchen – direkt DOM nutzen
+    static getMembersDoc() {
+        return document;
     }
+
+    static async fetchPage(url) {
+        const res = await fetch(url, { credentials: "include" });
+        return await res.text();
+    }
+
+    static async getTroops(id) {
+        return await this.fetchPage(`/game.php?screen=info_player&mode=units&player_id=${id}`);
+    }
+
+    static async getBuildings(id) {
+        return await this.fetchPage(`/game.php?screen=info_player&mode=buildings&player_id=${id}`);
+    }
+
+    static async getDefense(id) {
+        return await this.fetchPage(`/game.php?screen=info_player&mode=defense&player_id=${id}`);
+    }
+}
+
 
     /* ---------------------------------------------------------
      *  PARSER
      * --------------------------------------------------------- */
 class Parser {
-    static parseMembers(html) {
-        const doc = new DOMParser().parseFromString(html, "text/html");
 
-        // mögliche Tabellen, die Spieler enthalten können
+    static parseMembersFromDoc(doc) {
+
+        // alle möglichen Tabellen, die Spieler enthalten können
         const selectors = [
             "#ally_content table",
             "table#member_list",
@@ -233,7 +236,10 @@ class Parser {
 
         for (const sel of selectors) {
             const t = doc.querySelector(sel);
-            if (t && t.querySelector("a[href*='player_id']")) {
+            if (!t) continue;
+
+            // prüfen, ob die Tabelle Spielerzeilen enthält
+            if (t.querySelector("a[href*='player_id']")) {
                 table = t;
                 break;
             }
@@ -241,6 +247,7 @@ class Parser {
 
         if (!table) return [];
 
+        // alle Zeilen mit Spielerlinks
         const rows = [...table.querySelectorAll("tr")].filter(r =>
             r.querySelector("a[href*='player_id']")
         );
@@ -329,9 +336,11 @@ class Parser {
 
         static async startExport(wantTroops, wantBuildings, wantDefense) {
             // hier KEIN document.querySelector mehr!
-            const membersHTML = await DataFetcher.getMembers();
-            const members = Parser.parseMembers(membersHTML);
-
+            //const membersHTML = await DataFetcher.getMembers();
+            //const members = Parser.parseMembers(membersHTML);
+            const membersDoc = DataFetcher.getMembersDoc(); 
+            const members = Parser.parseMembersFromDoc(membersDoc); 
+            console.log("Gefundene Mitglieder:", members);
             const rows = [];
 
             for (const m of members) {
