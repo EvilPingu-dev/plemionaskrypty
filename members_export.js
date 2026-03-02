@@ -529,11 +529,27 @@
             return [table, skipped_players];
         },
 save_as_file: function (content) {
+    const lines = content.split("\n");
+    const header = lines.shift().split(",");
+
+    // BBCode Header
+    let output = "[table]\n";
+    output += "[**]" + header.join("[||]") + "[/**]\n";
+
+    // BBCode Rows
+    for (const line of lines) {
+        if (!line.trim()) continue;
+        const cols = line.split(",");
+        output += "[*]" + cols.join("[|]") + "\n";
+    }
+
+    output += "[/table]";
+
     const gui =
-        `<h2>CSV – zum Kopieren</h2>
-        <p>Markiere den Text unten und kopiere ihn:</p>
-        <textarea rows="20" cols="80" style="width:100%;">${content}</textarea>`;
-    Dialog.show(namespace + ".csv_output", gui);
+        `<h2>BBCode – zum Kopieren</h2>
+        <p>Fertig formatiert für Forum / Discord / TW</p>
+        <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
+    Dialog.show(namespace + ".bbcode_output", gui);
 },
         time_wrapper: async function (task) {
             const start = Date.now();
