@@ -532,13 +532,19 @@ save_as_file: function (content) {
     let lines = content.split("\n");
     const header = lines.shift().split(",");
 
+    // Dynamische Indexe
     const playerIdx  = header.indexOf("player_name");
     const coordsIdx  = header.indexOf("coords");
     const pointsIdx  = header.indexOf("points");
-    const firstBuildingIdx = pointsIdx + 1;
-    const buildingNames = header.slice(firstBuildingIdx);
 
-    // Spieler → Liste von Dörfern
+    // Welche Exportarten sind aktiv?
+    const hasTroops    = game_data.units.every(u => header.includes(u) || header.includes(`village_${u}`));
+    const hasBuildings = header.includes("main.webp");
+    const hasDefense   = header.includes("village_spear");
+
+    const firstDynamicIdx = pointsIdx + 1;
+
+    // Spieler → Dörfer
     const players = {};
 
     for (const line of lines) {
@@ -548,7 +554,6 @@ save_as_file: function (content) {
         const player = cols[playerIdx].replace(/"/g, "");
         const coords = cols[coordsIdx];
         const points = parseInt(cols[pointsIdx].replace(/\./g, ""), 10) || 0;
-        const buildings = cols.slice(firstBuildingIdx);
 
         if (!players[player]) {
             players[player] = {
@@ -557,31 +562,82 @@ save_as_file: function (content) {
             };
         }
 
-        players[player].totalPoints += points;
-        players[player].villages.push({
+        const villageData = {
             coords,
             points,
-            buildings
-        });
+            troops: {},
+            buildings: {},
+            defenseVillage: {},
+            defenseTransit: {}
+        };
+
+        let idx = firstDynamicIdx;
+
+        // Wojska
+        if (hasTroops) {
+            for (const unit of game_data.units) {
+                villageData.troops[unit] = cols[idx] || "";
+                idx++;
+            }
+        }
+
+        // Budynki
+        if (hasBuildings) {
+            for (let i = 0; i < AllyMembers.building_names.length; i++) {
+                const bName = AllyMembers.building_names[i];
+                villageData.buildings[bName] = cols[idx] || "";
+                idx++;
+            }
+        }
+
+        // Obrona
+        if (hasDefense) {
+            for (const unit of game_data.units) {
+                villageData.defenseVillage[unit] = cols[idx] || "";
+                idx++;
+            }
+            for (const unit of game_data.units) {
+                villageData.defenseTransit[unit] = cols[idx] || "";
+                idx++;
+            }
+        }
+
+        players[player].totalPoints += points;
+        players[player].villages.push(villageData);
     }
 
-    // Spieler nach Gesamtpunkten sortieren
+    // Sortierung nach Gesamtpunkten
     const sortedPlayers = Object.entries(players)
         .sort((a, b) => b[1].totalPoints - a[1].totalPoints);
 
     // BBCode Header
     let output = "[table]\n";
-    output += "[**]";
-    output += "Gracz[||]Koordynaty[||]Punkty";
+    output += "[**]Gracz[||]Koordynaty[||]Punkty";
 
-    for (const b of buildingNames) {
-        const clean = b.replace(".webp", "");
-        output += `[||][building]${clean}[/building]`;
+    if (hasTroops) {
+        for (const unit of game_data.units) {
+            output += `[||][unit]${unit}[/unit]`;
+        }
+    }
+
+    if (hasBuildings) {
+        for (const b of AllyMembers.building_names) {
+            output += `[||][building]${b}[/building]`;
+        }
+    }
+
+    if (hasDefense) {
+        for (const unit of game_data.units) {
+            output += `[||]v_${unit}`;
+        }
+        for (const unit of game_data.units) {
+            output += `[||]t_${unit}`;
+        }
     }
 
     output += "[/**]\n";
 
-    // BBCode Rows – gruppiert nach Spieler
+    // BBCode Rows
     for (const [player, data] of sortedPlayers) {
         for (const v of data.villages) {
             output += "[*]";
@@ -589,8 +645,25 @@ save_as_file: function (content) {
             output += `[coord]${v.coords}[/coord][|]`;
             output += `${v.points}`;
 
-            for (const val of v.buildings) {
-                output += `[|]${val}`;
+            if (hasTroops) {
+                for (const unit of game_data.units) {
+                    output += `[|]${v.troops[unit]}`;
+                }
+            }
+
+            if (hasBuildings) {
+                for (const b of AllyMembers.building_names) {
+                    output += `[|]${v.buildings[b]}`;
+                }
+            }
+
+            if (hasDefense) {
+                for (const unit of game_data.units) {
+                    output += `[|]${v.defenseVillage[unit]}`;
+                }
+                for (const unit of game_data.units) {
+                    output += `[|]${v.defenseTransit[unit]}`;
+                }
             }
 
             output += "\n";
@@ -605,7 +678,6 @@ save_as_file: function (content) {
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
-
 
 
 
