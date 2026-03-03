@@ -59,9 +59,13 @@
         create_ui: function () {
             const container = document.createElement('div');
             container.id = Helper.get_id('container');
+            container.classList.add('hm-modern-container');
             Dialog.show(Helper.get_id(), container.outerHTML);
             const popup = document.querySelector('[id^="popup_box"]');
-            popup.style.width = '380px';
+            if (popup) {
+                popup.classList.add('hm-modern-popup');
+                popup.style.width = '420px';
+            }
 
             const existing_style = document.getElementById(Helper.get_id('styles'));
             if (existing_style) {
@@ -71,19 +75,19 @@
             const style = document.createElement('style');
             style.id = Helper.get_id('styles');
             style.textContent = `
-                [id^="popup_box"] {
+                .hm-modern-popup {
                     border: 1px solid #c7d6ff !important;
                     border-radius: 14px !important;
                     background: #eff5ff !important;
                     box-shadow: 0 18px 45px rgba(20, 35, 90, .22) !important;
                     overflow: hidden !important;
                 }
-                [id^="popup_box"] * {
+                .hm-modern-popup * {
                     font-family: Inter, Segoe UI, Roboto, Arial, sans-serif !important;
                 }
-                [id^="popup_box"] > h3,
-                [id^="popup_box"] .popup_box_header,
-                [id^="popup_box"] .vis_header {
+                .hm-modern-popup > h3,
+                .hm-modern-popup .popup_box_header,
+                .hm-modern-popup .vis_header {
                     margin: 0 !important;
                     padding: 12px 14px !important;
                     border-bottom: 1px solid #d7e3ff !important;
@@ -91,24 +95,24 @@
                     color: #1e2a44 !important;
                     font-weight: 700 !important;
                 }
-                [id^="popup_box"] .popup_box_content,
-                [id^="popup_box"] .popup_content,
-                [id^="popup_box"] > div {
+                .hm-modern-popup .popup_box_content,
+                .hm-modern-popup .popup_content,
+                .hm-modern-popup > div {
                     background: transparent !important;
                     color: #2f3d5c !important;
                 }
-                [id^="popup_box"] a {
+                .hm-modern-popup a {
                     color: #2563eb !important;
                 }
-                [id^="popup_box"] textarea,
-                [id^="popup_box"] input[type="text"] {
+                .hm-modern-popup textarea,
+                .hm-modern-popup input[type="text"] {
                     background: #fff !important;
                     color: #1f2a44 !important;
                     border: 1px solid #c9d9ff !important;
                     border-radius: 8px !important;
                     padding: 8px !important;
                 }
-                #${Helper.get_id('container')} {
+                .hm-modern-popup .hm-modern-container {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
@@ -117,49 +121,49 @@
                     border: 1px solid #c9d8ff;
                     border-radius: 10px;
                 }
-                #${Helper.get_id('container')} h2 {
+                .hm-modern-popup .hm-modern-container h2 {
                     margin: 0;
                     font-size: 18px;
                     font-weight: 700;
                     color: #1e2a44;
                     text-align: center;
                 }
-                #${Helper.get_id('container')} fieldset {
+                .hm-modern-popup .hm-modern-container fieldset {
                     margin: 0;
                     padding: 10px;
                     border: 1px solid #d7e3ff;
                     border-radius: 8px;
                     background: rgba(255,255,255,0.9);
                 }
-                #${Helper.get_id('container')} legend {
+                .hm-modern-popup .hm-modern-container legend {
                     padding: 0 6px;
                     font-weight: 700;
                     color: #33415f;
                 }
-                #${Helper.get_id('container')} table {
+                .hm-modern-popup .hm-modern-container table {
                     width: 100%;
                     border-collapse: collapse;
                 }
-                #${Helper.get_id('container')} td {
+                .hm-modern-popup .hm-modern-container td {
                     padding: 6px 2px;
                     vertical-align: middle;
                 }
-                #${Helper.get_id('container')} td:last-child {
+                .hm-modern-popup .hm-modern-container td:last-child {
                     text-align: right;
                 }
-                #${Helper.get_id('container')} label {
+                .hm-modern-popup .hm-modern-container label {
                     font-weight: 600;
                     color: #2e3a57;
                     cursor: pointer;
                     user-select: none;
                 }
-                #${Helper.get_id('container')} input[type="checkbox"] {
+                .hm-modern-popup .hm-modern-container input[type="checkbox"] {
                     width: 16px;
                     height: 16px;
                     cursor: pointer;
                     accent-color: #3b82f6;
                 }
-                #${Helper.get_id('export_button')} {
+                .hm-modern-popup .hm-modern-button {
                     width: 100%;
                     padding: 8px 10px;
                     border: 1px solid #2563eb;
@@ -171,16 +175,16 @@
                     cursor: pointer;
                     box-shadow: 0 8px 20px rgba(37, 99, 235, .25);
                 }
-                #${Helper.get_id('export_button')}:hover:not(:disabled) {
+                .hm-modern-popup .hm-modern-button:hover:not(:disabled) {
                     transform: translateY(-1px);
                     filter: brightness(1.03);
                 }
-                #${Helper.get_id('export_button')}:disabled {
+                .hm-modern-popup .hm-modern-button:disabled {
                     opacity: .6;
                     cursor: not-allowed;
                     box-shadow: none;
                 }
-                #${Helper.get_id('progress')} {
+                .hm-modern-popup .hm-modern-progress {
                     min-height: 18px;
                     max-height: 120px;
                     overflow: auto;
@@ -219,9 +223,11 @@
             }
             const button = document.createElement('button');
             button.id = Helper.get_id('export_button');
+            button.classList.add('hm-modern-button');
             button.innerText = i18n.LABEL.export;
             const progress = document.createElement('div');
             progress.id = Helper.get_id('progress');
+            progress.classList.add('hm-modern-progress');
             container.append(title);
             container.append(fieldset);
             fieldset.append(legend);
