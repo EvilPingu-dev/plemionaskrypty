@@ -251,44 +251,87 @@
             const body = document.createElement('body');
             body.innerHTML = text;
             const table = body.querySelector('#ally_content table.vis.w100');
+            const parse_count = (value) => {
+                const normalized = String(value).trim().replace(/\./g, '').replace(/\s+/g, '');
+                return normalized === '' ? 0 : Number(normalized);
+            };
 
             const player_data = [];
             const commands_info = { 'incoming': -1, 'outgoing': -1 };
             const unit_columns = {};
+            let points_column = -1;
 
             if (!table) return player_data;
 
-            const header_row = table.rows[0];
-            for (let i = 0; i < header_row.cells.length; i++) {
-                const image = header_row.cells[i].querySelector('img');
-                if (!image) {
-                    continue;
-                }
-
-                const icon = image.src.split('/').pop().split('?')[0];
-                switch (icon) {
-                    case "commands_outgoing.png":
-                        commands_info['outgoing'] = i;
-                        break;
-                    case "att.png":
-                        commands_info['incoming'] = i;
-                        break;
-                    default:
-                        for (const unit_name of game_data.units) {
-                            if (icon === `${unit_name}.png`) {
-                                unit_columns[unit_name] = i;
-                            }
-                        }
-                        break;
+            let first_data_row_index = -1;
+            for (let i = 0; i < table.rows.length; i++) {
+                const cell_text = table.rows[i].cells[0]?.innerText || '';
+                if (/\d+\|\d+/.test(cell_text)) {
+                    first_data_row_index = i;
+                    break;
                 }
             }
 
-            for (let i = 1; i < table.rows.length; i++) {
+            if (first_data_row_index === -1) {
+                return player_data;
+            }
+
+            for (let row_index = 0; row_index < first_data_row_index; row_index++) {
+                const header_row = table.rows[row_index];
+                for (let i = 0; i < header_row.cells.length; i++) {
+                    const header_cell = header_row.cells[i];
+                    const image = header_cell.querySelector('img');
+                    if (image) {
+                        const icon = image.src.split('/').pop().split('?')[0];
+                        switch (icon) {
+                            case "commands_outgoing.png":
+                                commands_info['outgoing'] = i;
+                                break;
+                            case "att.png":
+                                commands_info['incoming'] = i;
+                                break;
+                            default:
+                                for (const unit_name of game_data.units) {
+                                    if (icon === `${unit_name}.png` || icon === `unit_${unit_name}.png`) {
+                                        unit_columns[unit_name] = i;
+                                    }
+                                }
+                                break;
+                        }
+                    }
+
+                    const header_text = header_cell.innerText.trim().toLowerCase();
+                    if (points_column === -1 && /(punkt|points)/.test(header_text)) {
+                        points_column = i;
+                    }
+                }
+            }
+
+            if (points_column === -1) {
+                const reserved_columns = new Set([0, commands_info.incoming, commands_info.outgoing]);
+                for (const unit_name of game_data.units) {
+                    if (unit_columns[unit_name] !== undefined) {
+                        reserved_columns.add(unit_columns[unit_name]);
+                    }
+                }
+                const first_data_row = table.rows[first_data_row_index];
+                for (let i = 1; i < first_data_row.cells.length; i++) {
+                    if (!reserved_columns.has(i)) {
+                        points_column = i;
+                        break;
+                    }
+                }
+            }
+
+            for (let i = first_data_row_index; i < table.rows.length; i++) {
                 const row_data = { units: {} };
                 const row = table.rows[i];
 
                 row_data.coords = row.cells[0].innerText.match(/\d+\|\d+/g).pop();
                 row_data.village_name = row.cells[0].innerText.trim();
+                row_data.points = points_column === -1
+                    ? null
+                    : parse_count(row.cells[points_column].innerText);
 
                 for (const unit_name of game_data.units) {
                     const cell_index = unit_columns[unit_name];
@@ -298,15 +341,15 @@
                     }
                     row_data.units[unit_name] = row.cells[cell_index].innerText.trim() === '?'
                         ? null
-                        : Number(row.cells[cell_index].innerText);
+                        : parse_count(row.cells[cell_index].innerText);
                 }
 
                 row_data.outgoing = commands_info['outgoing'] === -1
                     ? null
-                    : Number(row.cells[commands_info['outgoing']].innerText);
+                    : parse_count(row.cells[commands_info['outgoing']].innerText);
                 row_data.incoming = commands_info['incoming'] === -1
                     ? null
-                    : Number(row.cells[commands_info['incoming']].innerText);
+                    : parse_count(row.cells[commands_info['incoming']].innerText);
                 player_data.push(row_data);
             }
 
@@ -446,8 +489,12 @@
                 header.push(...game_data.units);
             }
 
+            if (export_options['members_troops'] || export_options['members_buildings']) {
+                header.push('points');
+            }
+
             if (export_options['members_buildings']) {
-                header.push('points', ...AllyMembers.building_names);
+                header.push(...AllyMembers.building_names);
             }
 
             if (export_options['members_defense']) {
@@ -526,6 +573,11 @@
                             row.push('');
                             row.push(...new Array(AllyMembers.building_names.length).fill(''));
                         }
+                    } else if (export_options['members_troops']) {
+                        row.push(member_metadata_info.access_granted['members_troops'] && village_data.points !== null
+                            ? village_data.points
+                            : ''
+                        );
                     }
                     if (export_options['members_defense']) {
                         if (member_metadata_info.access_granted['members_defense']) {
