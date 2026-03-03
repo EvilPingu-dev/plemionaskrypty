@@ -15,10 +15,10 @@
             SKIPPED_PLAYERS: 'Pomini\u{119}ci gracze'
         },
         LABEL: {
-            export_option: 'Opcje exportu',
+            export_option: 'Opcje eksportu',
             members_troops: 'Wojska',
             members_buildings: 'Budynki',
-            export: 'Export'
+            export: 'Eksportuj'
         },
         TITLE: 'Hermitowscy Cz\u{142}onkowie',
         PLAYER_NO_ACCESS: '(brak dost\u{119}pu)',
@@ -38,8 +38,8 @@
                 : namespace;
         },
         get_control: function (control_name) {
-            const escaped_id = Helper.get_id(control_name).replace(/\./g, '\\.');
-            return document.querySelector(`#${escaped_id}`);
+            const id = Helper.get_id(control_name);
+            return document.getElementById(id) || document.querySelector(`#${id.replace(/\./g, '\\.')}`);
         },
         handle_error: function (error) {
             if (typeof (error) === 'string') {
@@ -47,7 +47,7 @@
                 return;
             }
             const gui =
-                `<h2>WTF - What a Terrible Failure</h2>
+                `<h2>Wystąpił błąd</h2>
                     <p><strong>${i18n.ERROR_MESSAGE}</strong><br/>
                         <textarea rows='5' cols='42'>${error}\n\n${error.stack}</textarea><br/>
                         <a href='${i18n.FORUM_THREAD_HREF}'>${i18n.FORUM_THREAD}</a>
@@ -56,16 +56,350 @@
         },
     };
     const AllyMembers = {
+        destroy_ui: function () {
+            const overlay = Helper.get_control('overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+            if (document.body.dataset.hm_prev_overflow !== undefined) {
+                document.body.style.overflow = document.body.dataset.hm_prev_overflow;
+                delete document.body.dataset.hm_prev_overflow;
+            }
+        },
+        destroy_bbcode_ui: function () {
+            const overlay = Helper.get_control('bbcode_overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        },
+        show_bbcode_popup: function (output) {
+            AllyMembers.destroy_ui();
+            AllyMembers.destroy_bbcode_ui();
+
+            if (typeof Dialog !== 'undefined' && typeof Dialog.close === 'function') {
+                try {
+                    Dialog.close();
+                } catch (_) { }
+            }
+
+            for (const legacy_dialog of document.querySelectorAll('[id*="bbcode_output"]')) {
+                legacy_dialog.remove();
+            }
+
+            const overlay = document.createElement('div');
+            overlay.id = Helper.get_id('bbcode_overlay');
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.padding = '16px';
+            overlay.style.background = 'rgba(2, 6, 23, 0.78)';
+            overlay.style.zIndex = '2147483647';
+
+            const modal = document.createElement('div');
+            modal.id = Helper.get_id('bbcode_modal');
+            modal.style.width = 'min(980px, 96vw)';
+            modal.style.maxHeight = '92vh';
+            modal.style.display = 'flex';
+            modal.style.flexDirection = 'column';
+            modal.style.background = '#ffffff';
+            modal.style.border = '2px solid #1d4ed8';
+            modal.style.borderRadius = '16px';
+            modal.style.boxShadow = '0 24px 50px rgba(2, 6, 23, .45)';
+            modal.style.overflow = 'hidden';
+            modal.style.fontFamily = 'Inter, Segoe UI, Roboto, Arial, sans-serif';
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.alignItems = 'center';
+            header.style.justifyContent = 'space-between';
+            header.style.gap = '8px';
+            header.style.padding = '14px 16px';
+            header.style.background = 'linear-gradient(180deg, #0b1f4d 0%, #1d4ed8 100%)';
+            header.style.borderBottom = '1px solid #1e3a8a';
+
+            const title = document.createElement('h2');
+            title.textContent = 'BBCode – skopiuj';
+            title.style.margin = '0';
+            title.style.fontSize = '24px';
+            title.style.fontWeight = '800';
+            title.style.color = '#ffffff';
+
+            const close = document.createElement('button');
+            close.type = 'button';
+            close.textContent = '×';
+            close.setAttribute('aria-label', 'Zamknij');
+            close.style.width = '30px';
+            close.style.height = '30px';
+            close.style.border = '1px solid rgba(255,255,255,.55)';
+            close.style.borderRadius = '8px';
+            close.style.background = 'rgba(255,255,255,.12)';
+            close.style.color = '#fff';
+            close.style.fontSize = '18px';
+            close.style.lineHeight = '1';
+            close.style.cursor = 'pointer';
+            close.addEventListener('click', AllyMembers.destroy_bbcode_ui);
+
+            const content = document.createElement('div');
+            content.style.display = 'flex';
+            content.style.flexDirection = 'column';
+            content.style.gap = '12px';
+            content.style.padding = '16px';
+            content.style.background = '#ffffff';
+            content.style.overflow = 'auto';
+
+            const subtitle = document.createElement('p');
+            subtitle.textContent = 'Posortowano malejąco według sumy punktów gracza';
+            subtitle.style.margin = '0';
+            subtitle.style.color = '#111827';
+            subtitle.style.fontWeight = '600';
+
+            const textarea = document.createElement('textarea');
+            textarea.value = output;
+            textarea.readOnly = true;
+            textarea.rows = 24;
+            textarea.style.width = '100%';
+            textarea.style.minHeight = '360px';
+            textarea.style.maxHeight = '62vh';
+            textarea.style.resize = 'vertical';
+            textarea.style.background = '#ffffff';
+            textarea.style.color = '#0f172a';
+            textarea.style.border = '1px solid #bfdbfe';
+            textarea.style.borderRadius = '10px';
+            textarea.style.padding = '12px';
+            textarea.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+            textarea.style.fontSize = '13px';
+
+            header.append(title);
+            header.append(close);
+            content.append(subtitle);
+            content.append(textarea);
+            modal.append(header);
+            modal.append(content);
+            overlay.append(modal);
+            document.body.append(overlay);
+        },
         create_ui: function () {
-            const container = document.createElement('div');
-            container.id = Helper.get_id('container');
-            Dialog.show(Helper.get_id(), container.outerHTML);
-            document.querySelector('[id^="popup_box"]').style.width = '300px';
+            AllyMembers.destroy_ui();
+
+            const existing_style = document.getElementById(Helper.get_id('styles'));
+            if (existing_style) {
+                existing_style.remove();
+            }
+
+            const style = document.createElement('style');
+            style.id = Helper.get_id('styles');
+            const sel = (name) => `[id="${Helper.get_id(name)}"]`;
+            style.textContent = `
+                :root {
+                    --hm-blue-900: #0b1f4d;
+                    --hm-blue-800: #1e3a8a;
+                    --hm-blue-700: #1d4ed8;
+                    --hm-blue-600: #2563eb;
+                    --hm-blue-200: #bfdbfe;
+                    --hm-blue-100: #dbeafe;
+                    --hm-blue-50: #f8fbff;
+                    --hm-white: #ffffff;
+                    --hm-black: #0f172a;
+                    --hm-text: #111827;
+                }
+                ${sel('overlay')} {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 20000;
+                    background: rgba(2, 6, 23, .68);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 16px;
+                }
+                ${sel('modal')} {
+                    width: 100%;
+                    max-width: 460px;
+                    background: var(--hm-white);
+                    border: 2px solid var(--hm-blue-700);
+                    border-radius: 14px;
+                    box-shadow: 0 24px 50px rgba(2, 6, 23, .4);
+                    overflow: hidden;
+                    font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+                    color: var(--hm-black);
+                }
+                ${sel('header')} {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                    padding: 12px 14px;
+                    background: linear-gradient(180deg, var(--hm-blue-900) 0%, var(--hm-blue-700) 100%);
+                    color: var(--hm-white);
+                    border-bottom: 1px solid var(--hm-blue-800);
+                }
+                ${sel('title')} {
+                    margin: 0;
+                    font-size: 24px;
+                    font-weight: 800;
+                    color: var(--hm-white);
+                }
+                ${sel('close')} {
+                    width: 30px;
+                    height: 30px;
+                    border: 1px solid rgba(255,255,255,.55);
+                    border-radius: 8px;
+                    background: rgba(255,255,255,.12);
+                    color: #fff;
+                    font-size: 18px;
+                    line-height: 1;
+                    cursor: pointer;
+                }
+                ${sel('close')}:hover {
+                    background: rgba(255,255,255,.2);
+                }
+                ${sel('container')} {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    padding: 14px;
+                    background: var(--hm-white);
+                }
+                ${sel('container')} fieldset {
+                    margin: 0;
+                    padding: 10px;
+                    border: 1px solid var(--hm-blue-200);
+                    border-radius: 8px;
+                    background: var(--hm-blue-50);
+                }
+                ${sel('container')} legend {
+                    padding: 0 6px;
+                    color: var(--hm-blue-800);
+                    font-weight: 700;
+                }
+                ${sel('container')} table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                ${sel('container')} td {
+                    padding: 6px 2px;
+                }
+                ${sel('container')} td:last-child {
+                    text-align: right;
+                }
+                ${sel('container')} label {
+                    color: var(--hm-text);
+                    font-weight: 600;
+                }
+                ${sel('container')} .switch-cell {
+                    width: 52px;
+                }
+                ${sel('container')} input.hm-switch {
+                    appearance: none;
+                    -webkit-appearance: none;
+                    width: 44px;
+                    height: 24px;
+                    border-radius: 999px;
+                    border: 1px solid #94a3b8;
+                    background: #e5e7eb;
+                    position: relative;
+                    transition: background .18s ease, border-color .18s ease;
+                    cursor: pointer;
+                    outline: none;
+                    vertical-align: middle;
+                }
+                ${sel('container')} input.hm-switch::before {
+                    content: '';
+                    position: absolute;
+                    top: 2px;
+                    left: 2px;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    box-shadow: 0 1px 2px rgba(0,0,0,.2);
+                    transition: transform .18s ease;
+                }
+                ${sel('container')} input.hm-switch:checked {
+                    background: var(--hm-blue-600);
+                    border-color: var(--hm-blue-700);
+                }
+                ${sel('container')} input.hm-switch:checked::before {
+                    transform: translateX(20px);
+                }
+                ${sel('container')} input.hm-switch:focus-visible {
+                    box-shadow: 0 0 0 3px rgba(37, 99, 235, .25);
+                }
+                ${sel('export_button')} {
+                    width: 100%;
+                    padding: 9px 12px;
+                    border: 1px solid var(--hm-blue-800);
+                    border-radius: 8px;
+                    background: linear-gradient(180deg, var(--hm-blue-600) 0%, var(--hm-blue-800) 100%);
+                    color: var(--hm-white);
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: transform .12s ease, filter .12s ease;
+                }
+                ${sel('export_button')}:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                    filter: brightness(1.06);
+                }
+                ${sel('export_button')}:disabled {
+                    opacity: .65;
+                    cursor: not-allowed;
+                }
+                ${sel('progress')} {
+                    min-height: 18px;
+                    max-height: 120px;
+                    overflow: auto;
+                    white-space: pre-wrap;
+                    font-size: 13px;
+                    color: var(--hm-text);
+                    border: 1px solid var(--hm-blue-100);
+                    border-radius: 8px;
+                    padding: 6px 8px;
+                    background: var(--hm-white);
+                }
+            `;
+            document.head.append(style);
+
+            const overlay = document.createElement('div');
+            overlay.id = Helper.get_id('overlay');
+            overlay.innerHTML = `
+                <div id="${Helper.get_id('modal')}">
+                    <div id="${Helper.get_id('header')}">
+                        <h2 id="${Helper.get_id('title')}">${i18n.TITLE}</h2>
+                        <button id="${Helper.get_id('close')}" type="button" aria-label="Zamknij">×</button>
+                    </div>
+                    <div id="${Helper.get_id('container')}"></div>
+                </div>
+            `;
+
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.padding = '16px';
+            overlay.style.background = 'rgba(2, 6, 23, 0.55)';
+            overlay.style.zIndex = '2147483645';
+
+            const modal = overlay.querySelector(`#${Helper.get_id('modal').replace(/\./g, '\\.')}`);
+            if (modal) {
+                modal.style.maxHeight = 'calc(100vh - 32px)';
+                modal.style.overflow = 'auto';
+                modal.style.display = 'flex';
+                modal.style.flexDirection = 'column';
+            }
+
+            document.body.dataset.hm_prev_overflow = document.body.style.overflow || '';
+            document.body.style.overflow = 'hidden';
+            document.body.append(overlay);
         },
         create_controls: function () {
             const container = Helper.get_control('container');
-            const title = document.createElement('h2');
-            title.innerText = i18n.TITLE;
             const fieldset = document.createElement('fieldset');
             const legend = document.createElement('legend');
             legend.innerText = i18n.LABEL.export_option;
@@ -78,8 +412,10 @@
                 const checkbox = document.createElement('input');
                 label.textContent = i18n.LABEL[export_option];
                 label.setAttribute('for', Helper.get_id(export_option));
+                cell_2.classList.add('switch-cell');
                 checkbox.type = 'checkbox';
                 checkbox.id = Helper.get_id(export_option);
+                checkbox.classList.add('hm-switch');
                 checkbox.checked = true;
                 cell_1.append(label);
                 cell_2.append(checkbox);
@@ -90,11 +426,8 @@
             const button = document.createElement('button');
             button.id = Helper.get_id('export_button');
             button.innerText = i18n.LABEL.export;
-            button.classList.add('btn');
-            button.style.float = 'right';
             const progress = document.createElement('div');
             progress.id = Helper.get_id('progress');
-            container.append(title);
             container.append(fieldset);
             fieldset.append(legend);
             fieldset.append(table);
@@ -109,6 +442,10 @@
             }
             const export_button = Helper.get_control('export_button');
             export_button.addEventListener('click', AllyMembers.export);
+            const close_button = Helper.get_control('close');
+            if (close_button) {
+                close_button.addEventListener('click', AllyMembers.destroy_ui);
+            }
         },
         init: async function () {
             AllyMembers.create_ui();
@@ -251,42 +588,154 @@
             const body = document.createElement('body');
             body.innerHTML = text;
             const table = body.querySelector('#ally_content table.vis.w100');
+            const parse_count = (value) => {
+                const normalized = String(value).trim().replace(/\./g, '').replace(/\s+/g, '');
+                return normalized === '' ? 0 : Number(normalized);
+            };
 
             const player_data = [];
             const commands_info = { 'incoming': -1, 'outgoing': -1 };
+            const unit_columns = {};
+            let points_column = -1;
 
             if (!table) return player_data;
 
-            for (let i = game_data.units.length + 1; i < table.rows[0].cells.length; i++) {
-                switch (table.rows[0].cells[i].children[0].src.split('/').pop()) {
-                    case "commands_outgoing.png":
-                        commands_info['outgoing'] = i;
-                        break;
-                    case "att.png":
-                        commands_info['incoming'] = i;
-                        break;
+            let first_data_row_index = -1;
+            for (let i = 0; i < table.rows.length; i++) {
+                const cell_text = table.rows[i].cells[0]?.innerText || '';
+                if (/\d+\|\d+/.test(cell_text)) {
+                    first_data_row_index = i;
+                    break;
                 }
             }
 
-            for (let i = 1; i < table.rows.length; i++) {
+            if (first_data_row_index === -1) {
+                return player_data;
+            }
+
+            for (let row_index = 0; row_index < first_data_row_index; row_index++) {
+                const header_row = table.rows[row_index];
+                for (let i = 0; i < header_row.cells.length; i++) {
+                    const header_cell = header_row.cells[i];
+                    const image = header_cell.querySelector('img');
+                    if (image) {
+                        const icon = image.src.split('/').pop().split('?')[0];
+                        switch (icon) {
+                            case "commands_outgoing.png":
+                                commands_info['outgoing'] = i;
+                                break;
+                            case "att.png":
+                                commands_info['incoming'] = i;
+                                break;
+                            default:
+                                for (const unit_name of game_data.units) {
+                                    if (icon === `${unit_name}.png` || icon === `unit_${unit_name}.png`) {
+                                        unit_columns[unit_name] = i;
+                                    }
+                                }
+                                break;
+                        }
+                    }
+
+                    const header_text = header_cell.innerText.trim().toLowerCase();
+                    if (points_column === -1 && /(punkt|points)/.test(header_text)) {
+                        points_column = i;
+                    }
+                }
+            }
+
+            if (points_column === -1) {
+                const reserved_columns = new Set([0, commands_info.incoming, commands_info.outgoing]);
+                for (const unit_name of game_data.units) {
+                    if (unit_columns[unit_name] !== undefined) {
+                        reserved_columns.add(unit_columns[unit_name]);
+                    }
+                }
+                const first_data_row = table.rows[first_data_row_index];
+                for (let i = 1; i < first_data_row.cells.length; i++) {
+                    if (!reserved_columns.has(i)) {
+                        points_column = i;
+                        break;
+                    }
+                }
+            }
+
+            const mapped_units = game_data.units.filter(unit_name => unit_columns[unit_name] !== undefined).length;
+            if (mapped_units === 0) {
+                const first_data_row = table.rows[first_data_row_index];
+                const is_unit_like = (text) => {
+                    const value = String(text).trim();
+                    return value === '?' || /^\d{1,3}(\.\d{3})*$/.test(value) || /^\d+$/.test(value);
+                };
+                const score_start = (start_index) => {
+                    if (start_index < 1 || start_index + game_data.units.length > first_data_row.cells.length) {
+                        return -1;
+                    }
+                    let score = 0;
+                    for (let i = 0; i < game_data.units.length; i++) {
+                        const cell = first_data_row.cells[start_index + i];
+                        if (!cell) {
+                            return -1;
+                        }
+                        if (is_unit_like(cell.innerText)) {
+                            score++;
+                        }
+                    }
+                    return score;
+                };
+
+                const candidates = [];
+                if (points_column !== -1) {
+                    candidates.push(points_column + 1);
+                    candidates.push(points_column - game_data.units.length);
+                }
+                candidates.push(1);
+
+                let best_start = -1;
+                let best_score = -1;
+                for (const candidate of candidates) {
+                    const score = score_start(candidate);
+                    if (score > best_score) {
+                        best_score = score;
+                        best_start = candidate;
+                    }
+                }
+
+                if (best_start !== -1) {
+                    for (let i = 0; i < game_data.units.length; i++) {
+                        const unit_name = game_data.units[i];
+                        unit_columns[unit_name] = best_start + i;
+                    }
+                }
+            }
+
+            for (let i = first_data_row_index; i < table.rows.length; i++) {
                 const row_data = { units: {} };
                 const row = table.rows[i];
 
                 row_data.coords = row.cells[0].innerText.match(/\d+\|\d+/g).pop();
                 row_data.village_name = row.cells[0].innerText.trim();
+                row_data.points = points_column === -1
+                    ? null
+                    : parse_count(row.cells[points_column].innerText);
 
-                for (let j = 0; j < game_data.units.length; j++) {
-                    row_data.units[game_data.units[j]] = row.cells[j + 1].innerText.trim() === '?'
+                for (const unit_name of game_data.units) {
+                    const cell_index = unit_columns[unit_name];
+                    if (cell_index === undefined) {
+                        row_data.units[unit_name] = null;
+                        continue;
+                    }
+                    row_data.units[unit_name] = row.cells[cell_index].innerText.trim() === '?'
                         ? null
-                        : Number(row.cells[j + 1].innerText);
+                        : parse_count(row.cells[cell_index].innerText);
                 }
 
                 row_data.outgoing = commands_info['outgoing'] === -1
                     ? null
-                    : Number(row.cells[commands_info['outgoing']].innerText);
+                    : parse_count(row.cells[commands_info['outgoing']].innerText);
                 row_data.incoming = commands_info['incoming'] === -1
                     ? null
-                    : Number(row.cells[commands_info['incoming']].innerText);
+                    : parse_count(row.cells[commands_info['incoming']].innerText);
                 player_data.push(row_data);
             }
 
@@ -426,8 +875,12 @@
                 header.push(...game_data.units);
             }
 
+            if (export_options['members_troops'] || export_options['members_buildings']) {
+                header.push('points');
+            }
+
             if (export_options['members_buildings']) {
-                header.push('points', ...AllyMembers.building_names);
+                header.push(...AllyMembers.building_names);
             }
 
             if (export_options['members_defense']) {
@@ -506,6 +959,11 @@
                             row.push('');
                             row.push(...new Array(AllyMembers.building_names.length).fill(''));
                         }
+                    } else if (export_options['members_troops']) {
+                        row.push(member_metadata_info.access_granted['members_troops'] && village_data.points !== null
+                            ? village_data.points
+                            : ''
+                        );
                     }
                     if (export_options['members_defense']) {
                         if (member_metadata_info.access_granted['members_defense']) {
@@ -528,35 +986,81 @@
         },
 
 save_as_file: function (content) {
+    const normalize_building_name = function (name) {
+        return String(name)
+            .trim()
+            .split('?')[0]
+            .replace(/\.(webp|png)$/i, '');
+    };
+    const parse_csv_line = function (line) {
+        const cols = [];
+        let current = '';
+        let in_quotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                if (in_quotes && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    in_quotes = !in_quotes;
+                }
+                continue;
+            }
+            if (char === ',' && !in_quotes) {
+                cols.push(current);
+                current = '';
+                continue;
+            }
+            current += char;
+        }
+        cols.push(current);
+        return cols;
+    };
 
-    let lines = content.split("\n");
-    const header = lines.shift().split(",");
+    const lines = content.split('\n').filter(line => line.length > 0);
+    if (!lines.length) {
+        return;
+    }
 
-    const playerIdx = header.indexOf("player_name");
-    const coordsIdx = header.indexOf("coords");
+    const header = parse_csv_line(lines.shift());
+    const header_index = Object.fromEntries(header.map((column_name, index) => [column_name, index]));
+    const get_col = (cols, name) => {
+        const index = header_index[name];
+        return index === undefined ? '' : (cols[index] ?? '');
+    };
 
-    // kaputte Truppen-CSV:
-    // player, village, coords, incoming, outgoing, spear(points!), sword(spear), axe(sword), ...
-    const hasTroops = header.includes("spear");
-    const hasDefense = header.includes("village_spear");
+    const playerIdx = header_index.player_name;
+    const coordsIdx = header_index.coords;
+    const pointsIdx = header_index.points;
 
-    // buildings können null sein → absichern
-    const hasBuildings = Array.isArray(AllyMembers.building_names) && AllyMembers.building_names.length > 0;
+    const troop_units = game_data.units.filter(unit => header_index[unit] !== undefined);
+    const hasTroops = troop_units.length > 0;
+    const hasDefense = game_data.units.some(unit => header_index[`village_${unit}`] !== undefined);
+
+    const building_columns = [];
+    if (pointsIdx !== undefined) {
+        for (let i = pointsIdx + 1; i < header.length; i++) {
+            if (header[i].startsWith('village_') || header[i].startsWith('transit_')) {
+                break;
+            }
+            building_columns.push(header[i]);
+        }
+    }
+    const hasBuildings = building_columns.length > 0;
 
     const players = {};
 
     for (const line of lines) {
-        if (!line.trim()) continue;
-        const cols = line.split(",");
-
-        const player = cols[playerIdx]?.replace(/"/g, "") || "???";
-        const coords = cols[coordsIdx] || "0|0";
-
-        // Punkte aus "spear"-Spalte (Index 5) holen
-        let points = 0;
-        if (hasTroops && cols[5] !== undefined && cols[5] !== "") {
-            points = parseInt(cols[5].replace(/\./g, ""), 10) || 0;
+        if (!line.trim()) {
+            continue;
         }
+
+        const cols = parse_csv_line(line);
+        const player = (playerIdx !== undefined ? cols[playerIdx] : '') || '???';
+        const coords = (coordsIdx !== undefined ? cols[coordsIdx] : '') || '0|0';
+        const points_raw = pointsIdx !== undefined ? cols[pointsIdx] : '';
+        const points = points_raw !== '' ? (parseInt(String(points_raw).replace(/\./g, ''), 10) || 0) : 0;
 
         if (!players[player]) {
             players[player] = { totalPoints: 0, villages: [] };
@@ -571,39 +1075,24 @@ save_as_file: function (content) {
             defenseTransit: {}
         };
 
-        // Truppen: ab Index 6, alles um 1 nach links geschoben
         if (hasTroops) {
-            let idx = 6; // hier steht spear
-            for (const unit of game_data.units) {
-                villageData.troops[unit] = cols[idx] || "";
-                idx++;
+            for (const unit of troop_units) {
+                villageData.troops[unit] = get_col(cols, unit);
             }
         }
 
-        // Gebäude: nur wenn wirklich vorhanden
         if (hasBuildings) {
-            // wir gehen davon aus, dass Gebäude direkt nach Punkten kommen
-            // d.h. nach der "points"-Spalte im CSV-Header
-            const pointsIdx = header.indexOf("points");
-            let idx = pointsIdx !== -1 ? pointsIdx + 1 : 0;
-
-            for (const bName of AllyMembers.building_names) {
-                const cleanName = bName.replace(".webp", "").replace(".png", "");
-                villageData.buildings[cleanName] = cols[idx] || "";
-                idx++;
+            for (const bName of building_columns) {
+                villageData.buildings[bName] = get_col(cols, bName);
             }
         }
 
-        // Verteidigung: falls aktiv
         if (hasDefense) {
-            let idx = header.indexOf("village_spear");
             for (const unit of game_data.units) {
-                villageData.defenseVillage[unit] = cols[idx] || "";
-                idx++;
+                villageData.defenseVillage[unit] = get_col(cols, `village_${unit}`);
             }
             for (const unit of game_data.units) {
-                villageData.defenseTransit[unit] = cols[idx] || "";
-                idx++;
+                villageData.defenseTransit[unit] = get_col(cols, `transit_${unit}`);
             }
         }
 
@@ -611,35 +1100,39 @@ save_as_file: function (content) {
         players[player].villages.push(villageData);
     }
 
-    // Sortierung nach Gesamtpunkten
     const sortedPlayers = Object.entries(players)
         .sort((a, b) => b[1].totalPoints - a[1].totalPoints);
 
-    // BBCode Header
     let output = "[table]\n";
     output += "[**]Gracz[||]Koordynaty[||]Punkty";
 
     if (hasTroops) {
-        for (const unit of game_data.units) {
+        for (const unit of troop_units) {
             output += `[||][unit]${unit}[/unit]`;
         }
     }
 
     if (hasBuildings) {
-        for (const b of AllyMembers.building_names) {
-            const cleanName = b.replace(".webp", "").replace(".png", "");
-            output += `[||][building]${cleanName}[/building]`;
+        for (const b of building_columns) {
+            output += `[||][building]${normalize_building_name(b)}[/building]`;
         }
     }
 
     if (hasDefense) {
-        for (const unit of game_data.units) output += `[||]v_${unit}`;
-        for (const unit of game_data.units) output += `[||]t_${unit}`;
+        for (const unit of game_data.units) {
+            if (header_index[`village_${unit}`] !== undefined) {
+                output += `[||]v_${unit}`;
+            }
+        }
+        for (const unit of game_data.units) {
+            if (header_index[`transit_${unit}`] !== undefined) {
+                output += `[||]t_${unit}`;
+            }
+        }
     }
 
     output += "[/**]\n";
 
-    // BBCode Rows
     for (const [player, data] of sortedPlayers) {
         for (const v of data.villages) {
             output += "[*]";
@@ -648,21 +1141,28 @@ save_as_file: function (content) {
             output += `${v.points}`;
 
             if (hasTroops) {
-                for (const unit of game_data.units) {
+                for (const unit of troop_units) {
                     output += `[|]${v.troops[unit]}`;
                 }
             }
 
             if (hasBuildings) {
-                for (const b of AllyMembers.building_names) {
-                    const cleanName = b.replace(".webp", "").replace(".png", "");
-                    output += `[|]${v.buildings[cleanName]}`;
+                for (const b of building_columns) {
+                    output += `[|]${v.buildings[b]}`;
                 }
             }
 
             if (hasDefense) {
-                for (const unit of game_data.units) output += `[|]${v.defenseVillage[unit]}`;
-                for (const unit of game_data.units) output += `[|]${v.defenseTransit[unit]}`;
+                for (const unit of game_data.units) {
+                    if (header_index[`village_${unit}`] !== undefined) {
+                        output += `[|]${v.defenseVillage[unit]}`;
+                    }
+                }
+                for (const unit of game_data.units) {
+                    if (header_index[`transit_${unit}`] !== undefined) {
+                        output += `[|]${v.defenseTransit[unit]}`;
+                    }
+                }
             }
 
             output += "\n";
@@ -671,21 +1171,8 @@ save_as_file: function (content) {
 
     output += "[/table]";
 
-    const gui =
-        `<h2>BBCode – zum Kopieren</h2>
-        <p>Sortiert nach Gesamtpunkten pro Spieler (DESC)</p>
-        <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
-    Dialog.show(namespace + ".bbcode_output", gui);
+    AllyMembers.show_bbcode_popup(output);
 },
-
-
-
-
-
-
-
-
-        
 
 
 
@@ -752,4 +1239,4 @@ save_as_file: function (content) {
     };
     try { await AllyMembers.main(); } catch (ex) { Helper.handle_error(ex); }
     console.log(`%c${namespace} | Elapsed time: ${Date.now() - start} [ms]`, "background-color:black;color:lime;font-family:'Courier New';padding:5px");
-})(TribalWars);
+})(TribalWars);s
