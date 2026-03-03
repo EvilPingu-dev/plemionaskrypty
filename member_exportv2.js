@@ -254,16 +254,31 @@
 
             const player_data = [];
             const commands_info = { 'incoming': -1, 'outgoing': -1 };
+            const unit_columns = {};
 
             if (!table) return player_data;
 
-            for (let i = game_data.units.length + 1; i < table.rows[0].cells.length; i++) {
-                switch (table.rows[0].cells[i].children[0].src.split('/').pop()) {
+            const header_row = table.rows[0];
+            for (let i = 0; i < header_row.cells.length; i++) {
+                const image = header_row.cells[i].querySelector('img');
+                if (!image) {
+                    continue;
+                }
+
+                const icon = image.src.split('/').pop().split('?')[0];
+                switch (icon) {
                     case "commands_outgoing.png":
                         commands_info['outgoing'] = i;
                         break;
                     case "att.png":
                         commands_info['incoming'] = i;
+                        break;
+                    default:
+                        for (const unit_name of game_data.units) {
+                            if (icon === `${unit_name}.png`) {
+                                unit_columns[unit_name] = i;
+                            }
+                        }
                         break;
                 }
             }
@@ -275,10 +290,15 @@
                 row_data.coords = row.cells[0].innerText.match(/\d+\|\d+/g).pop();
                 row_data.village_name = row.cells[0].innerText.trim();
 
-                for (let j = 0; j < game_data.units.length; j++) {
-                    row_data.units[game_data.units[j]] = row.cells[j + 1].innerText.trim() === '?'
+                for (const unit_name of game_data.units) {
+                    const cell_index = unit_columns[unit_name];
+                    if (cell_index === undefined) {
+                        row_data.units[unit_name] = null;
+                        continue;
+                    }
+                    row_data.units[unit_name] = row.cells[cell_index].innerText.trim() === '?'
                         ? null
-                        : Number(row.cells[j + 1].innerText);
+                        : Number(row.cells[cell_index].innerText);
                 }
 
                 row_data.outgoing = commands_info['outgoing'] === -1
@@ -780,4 +800,3 @@ save_as_file: function (content) {
     try { await AllyMembers.main(); } catch (ex) { Helper.handle_error(ex); }
     console.log(`%c${namespace} | Elapsed time: ${Date.now() - start} [ms]`, "background-color:black;color:lime;font-family:'Courier New';padding:5px");
 })(TribalWars);
-s
