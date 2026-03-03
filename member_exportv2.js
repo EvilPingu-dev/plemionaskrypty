@@ -73,7 +73,18 @@
             }
         },
         show_bbcode_popup: function (output) {
+            AllyMembers.destroy_ui();
             AllyMembers.destroy_bbcode_ui();
+
+            if (typeof Dialog !== 'undefined' && typeof Dialog.close === 'function') {
+                try {
+                    Dialog.close();
+                } catch (_) { }
+            }
+
+            for (const legacy_dialog of document.querySelectorAll('[id*="bbcode_output"]')) {
+                legacy_dialog.remove();
+            }
 
             const overlay = document.createElement('div');
             overlay.id = Helper.get_id('bbcode_overlay');
@@ -86,7 +97,7 @@
             overlay.style.justifyContent = 'center';
             overlay.style.padding = '16px';
             overlay.style.background = 'rgba(2, 6, 23, 0.78)';
-            overlay.style.zIndex = '2147483646';
+            overlay.style.zIndex = '2147483647';
 
             const modal = document.createElement('div');
             modal.id = Helper.get_id('bbcode_modal');
@@ -96,7 +107,7 @@
             modal.style.flexDirection = 'column';
             modal.style.background = '#ffffff';
             modal.style.border = '2px solid #1d4ed8';
-            modal.style.borderRadius = '14px';
+            modal.style.borderRadius = '16px';
             modal.style.boxShadow = '0 24px 50px rgba(2, 6, 23, .45)';
             modal.style.overflow = 'hidden';
             modal.style.fontFamily = 'Inter, Segoe UI, Roboto, Arial, sans-serif';
@@ -106,14 +117,14 @@
             header.style.alignItems = 'center';
             header.style.justifyContent = 'space-between';
             header.style.gap = '8px';
-            header.style.padding = '12px 14px';
+            header.style.padding = '14px 16px';
             header.style.background = 'linear-gradient(180deg, #0b1f4d 0%, #1d4ed8 100%)';
             header.style.borderBottom = '1px solid #1e3a8a';
 
             const title = document.createElement('h2');
             title.textContent = 'BBCode – skopiuj';
             title.style.margin = '0';
-            title.style.fontSize = '22px';
+            title.style.fontSize = '24px';
             title.style.fontWeight = '800';
             title.style.color = '#ffffff';
 
@@ -135,8 +146,8 @@
             const content = document.createElement('div');
             content.style.display = 'flex';
             content.style.flexDirection = 'column';
-            content.style.gap = '10px';
-            content.style.padding = '14px';
+            content.style.gap = '12px';
+            content.style.padding = '16px';
             content.style.background = '#ffffff';
             content.style.overflow = 'auto';
 
@@ -158,7 +169,7 @@
             textarea.style.color = '#0f172a';
             textarea.style.border = '1px solid #bfdbfe';
             textarea.style.borderRadius = '10px';
-            textarea.style.padding = '10px';
+            textarea.style.padding = '12px';
             textarea.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
             textarea.style.fontSize = '13px';
 
