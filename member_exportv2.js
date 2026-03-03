@@ -66,6 +66,111 @@
                 delete document.body.dataset.hm_prev_overflow;
             }
         },
+        destroy_bbcode_ui: function () {
+            const overlay = Helper.get_control('bbcode_overlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        },
+        show_bbcode_popup: function (output) {
+            AllyMembers.destroy_bbcode_ui();
+
+            const overlay = document.createElement('div');
+            overlay.id = Helper.get_id('bbcode_overlay');
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.padding = '16px';
+            overlay.style.background = 'rgba(2, 6, 23, 0.78)';
+            overlay.style.zIndex = '2147483646';
+
+            const modal = document.createElement('div');
+            modal.id = Helper.get_id('bbcode_modal');
+            modal.style.width = 'min(980px, 96vw)';
+            modal.style.maxHeight = '92vh';
+            modal.style.display = 'flex';
+            modal.style.flexDirection = 'column';
+            modal.style.background = '#ffffff';
+            modal.style.border = '2px solid #1d4ed8';
+            modal.style.borderRadius = '14px';
+            modal.style.boxShadow = '0 24px 50px rgba(2, 6, 23, .45)';
+            modal.style.overflow = 'hidden';
+            modal.style.fontFamily = 'Inter, Segoe UI, Roboto, Arial, sans-serif';
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.alignItems = 'center';
+            header.style.justifyContent = 'space-between';
+            header.style.gap = '8px';
+            header.style.padding = '12px 14px';
+            header.style.background = 'linear-gradient(180deg, #0b1f4d 0%, #1d4ed8 100%)';
+            header.style.borderBottom = '1px solid #1e3a8a';
+
+            const title = document.createElement('h2');
+            title.textContent = 'BBCode – skopiuj';
+            title.style.margin = '0';
+            title.style.fontSize = '22px';
+            title.style.fontWeight = '800';
+            title.style.color = '#ffffff';
+
+            const close = document.createElement('button');
+            close.type = 'button';
+            close.textContent = '×';
+            close.setAttribute('aria-label', 'Zamknij');
+            close.style.width = '30px';
+            close.style.height = '30px';
+            close.style.border = '1px solid rgba(255,255,255,.55)';
+            close.style.borderRadius = '8px';
+            close.style.background = 'rgba(255,255,255,.12)';
+            close.style.color = '#fff';
+            close.style.fontSize = '18px';
+            close.style.lineHeight = '1';
+            close.style.cursor = 'pointer';
+            close.addEventListener('click', AllyMembers.destroy_bbcode_ui);
+
+            const content = document.createElement('div');
+            content.style.display = 'flex';
+            content.style.flexDirection = 'column';
+            content.style.gap = '10px';
+            content.style.padding = '14px';
+            content.style.background = '#ffffff';
+            content.style.overflow = 'auto';
+
+            const subtitle = document.createElement('p');
+            subtitle.textContent = 'Posortowano malejąco według sumy punktów gracza';
+            subtitle.style.margin = '0';
+            subtitle.style.color = '#111827';
+            subtitle.style.fontWeight = '600';
+
+            const textarea = document.createElement('textarea');
+            textarea.value = output;
+            textarea.readOnly = true;
+            textarea.rows = 24;
+            textarea.style.width = '100%';
+            textarea.style.minHeight = '360px';
+            textarea.style.maxHeight = '62vh';
+            textarea.style.resize = 'vertical';
+            textarea.style.background = '#ffffff';
+            textarea.style.color = '#0f172a';
+            textarea.style.border = '1px solid #bfdbfe';
+            textarea.style.borderRadius = '10px';
+            textarea.style.padding = '10px';
+            textarea.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+            textarea.style.fontSize = '13px';
+
+            header.append(title);
+            header.append(close);
+            content.append(subtitle);
+            content.append(textarea);
+            modal.append(header);
+            modal.append(content);
+            overlay.append(modal);
+            document.body.append(overlay);
+        },
         create_ui: function () {
             AllyMembers.destroy_ui();
 
@@ -268,7 +373,7 @@
             overlay.style.justifyContent = 'center';
             overlay.style.padding = '16px';
             overlay.style.background = 'rgba(2, 6, 23, 0.55)';
-            overlay.style.zIndex = '2147483647';
+            overlay.style.zIndex = '2147483645';
 
             const modal = overlay.querySelector(`#${Helper.get_id('modal').replace(/\./g, '\\.')}`);
             if (modal) {
@@ -1055,11 +1160,7 @@ save_as_file: function (content) {
 
     output += "[/table]";
 
-    const gui =
-        `<h2>BBCode – skopiuj</h2>
-        <p>Posortowano malejąco według sumy punktów gracza</p>
-        <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
-    Dialog.show(namespace + ".bbcode_output", gui);
+    AllyMembers.show_bbcode_popup(output);
 },
 
 
