@@ -323,6 +323,24 @@
                 }
             }
 
+            const mapped_units = game_data.units.filter(unit_name => unit_columns[unit_name] !== undefined).length;
+            if (mapped_units === 0) {
+                const first_data_row = table.rows[first_data_row_index];
+                let fallback_start = points_column !== -1 ? points_column + 1 : 1;
+
+                if (fallback_start + game_data.units.length > first_data_row.cells.length) {
+                    fallback_start = 1;
+                }
+
+                for (let i = 0; i < game_data.units.length; i++) {
+                    const unit_name = game_data.units[i];
+                    const inferred_index = fallback_start + i;
+                    if (inferred_index < first_data_row.cells.length) {
+                        unit_columns[unit_name] = inferred_index;
+                    }
+                }
+            }
+
             for (let i = first_data_row_index; i < table.rows.length; i++) {
                 const row_data = { units: {} };
                 const row = table.rows[i];
