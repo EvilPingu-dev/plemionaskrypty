@@ -650,7 +650,10 @@
 
 save_as_file: function (content) {
     const normalize_building_name = function (name) {
-        return String(name).replace(/\.webp$/i, '').replace(/\.png$/i, '');
+        return String(name)
+            .trim()
+            .split('?')[0]
+            .replace(/\.(webp|png)$/i, '');
     };
     const parse_csv_line = function (line) {
         const cols = [];
