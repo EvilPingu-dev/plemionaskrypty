@@ -326,17 +326,48 @@
             const mapped_units = game_data.units.filter(unit_name => unit_columns[unit_name] !== undefined).length;
             if (mapped_units === 0) {
                 const first_data_row = table.rows[first_data_row_index];
-                let fallback_start = points_column !== -1 ? points_column + 1 : 1;
+                const is_unit_like = (text) => {
+                    const value = String(text).trim();
+                    return value === '?' || /^\d{1,3}(\.\d{3})*$/.test(value) || /^\d+$/.test(value);
+                };
+                const score_start = (start_index) => {
+                    if (start_index < 1 || start_index + game_data.units.length > first_data_row.cells.length) {
+                        return -1;
+                    }
+                    let score = 0;
+                    for (let i = 0; i < game_data.units.length; i++) {
+                        const cell = first_data_row.cells[start_index + i];
+                        if (!cell) {
+                            return -1;
+                        }
+                        if (is_unit_like(cell.innerText)) {
+                            score++;
+                        }
+                    }
+                    return score;
+                };
 
-                if (fallback_start + game_data.units.length > first_data_row.cells.length) {
-                    fallback_start = 1;
+                const candidates = [];
+                if (points_column !== -1) {
+                    candidates.push(points_column + 1);
+                    candidates.push(points_column - game_data.units.length);
+                }
+                candidates.push(1);
+
+                let best_start = -1;
+                let best_score = -1;
+                for (const candidate of candidates) {
+                    const score = score_start(candidate);
+                    if (score > best_score) {
+                        best_score = score;
+                        best_start = candidate;
+                    }
                 }
 
-                for (let i = 0; i < game_data.units.length; i++) {
-                    const unit_name = game_data.units[i];
-                    const inferred_index = fallback_start + i;
-                    if (inferred_index < first_data_row.cells.length) {
-                        unit_columns[unit_name] = inferred_index;
+                if (best_start !== -1) {
+                    for (let i = 0; i < game_data.units.length; i++) {
+                        const unit_name = game_data.units[i];
+                        unit_columns[unit_name] = best_start + i;
                     }
                 }
             }
