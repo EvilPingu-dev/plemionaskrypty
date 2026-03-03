@@ -649,6 +649,9 @@
         },
 
 save_as_file: function (content) {
+    const normalize_building_name = function (name) {
+        return String(name).replace(/\.webp$/i, '').replace(/\.png$/i, '');
+    };
     const parse_csv_line = function (line) {
         const cols = [];
         let current = '';
@@ -771,7 +774,7 @@ save_as_file: function (content) {
 
     if (hasBuildings) {
         for (const b of building_columns) {
-            output += `[||][building]${b}[/building]`;
+            output += `[||][building]${normalize_building_name(b)}[/building]`;
         }
     }
 
