@@ -38,8 +38,8 @@
                 : namespace;
         },
         get_control: function (control_name) {
-            const escaped_id = Helper.get_id(control_name).replace(/\./g, '\\.');
-            return document.querySelector(`#${escaped_id}`);
+            const id = Helper.get_id(control_name);
+            return document.getElementById(id) || document.querySelector(`#${id.replace(/\./g, '\\.')}`);
         },
         handle_error: function (error) {
             if (typeof (error) === 'string') {
@@ -69,8 +69,9 @@
 
             const style = document.createElement('style');
             style.id = Helper.get_id('styles');
+            const sel = (name) => `[id="${Helper.get_id(name)}"]`;
             style.textContent = `
-                #${Helper.get_id('overlay')} {
+                ${sel('overlay')} {
                     position: fixed;
                     inset: 0;
                     z-index: 20000;
@@ -80,7 +81,7 @@
                     justify-content: center;
                     padding: 16px;
                 }
-                #${Helper.get_id('modal')} {
+                ${sel('modal')} {
                     width: 100%;
                     max-width: 460px;
                     background: #ffffff;
@@ -91,7 +92,7 @@
                     font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
                     color: #0f172a;
                 }
-                #${Helper.get_id('header')} {
+                ${sel('header')} {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
@@ -101,13 +102,13 @@
                     color: #ffffff;
                     border-bottom: 1px solid #1e3a8a;
                 }
-                #${Helper.get_id('title')} {
+                ${sel('title')} {
                     margin: 0;
                     font-size: 24px;
                     font-weight: 800;
                     color: #ffffff;
                 }
-                #${Helper.get_id('close')} {
+                ${sel('close')} {
                     width: 30px;
                     height: 30px;
                     border: 1px solid rgba(255,255,255,.55);
@@ -118,49 +119,49 @@
                     line-height: 1;
                     cursor: pointer;
                 }
-                #${Helper.get_id('close')}:hover {
+                ${sel('close')}:hover {
                     background: rgba(255,255,255,.2);
                 }
-                #${Helper.get_id('container')} {
+                ${sel('container')} {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
                     padding: 14px;
                     background: #ffffff;
                 }
-                #${Helper.get_id('container')} fieldset {
+                ${sel('container')} fieldset {
                     margin: 0;
                     padding: 10px;
                     border: 1px solid #93c5fd;
                     border-radius: 8px;
                     background: #f8fbff;
                 }
-                #${Helper.get_id('container')} legend {
+                ${sel('container')} legend {
                     padding: 0 6px;
                     color: #1e3a8a;
                     font-weight: 700;
                 }
-                #${Helper.get_id('container')} table {
+                ${sel('container')} table {
                     width: 100%;
                     border-collapse: collapse;
                 }
-                #${Helper.get_id('container')} td {
+                ${sel('container')} td {
                     padding: 6px 2px;
                 }
-                #${Helper.get_id('container')} td:last-child {
+                ${sel('container')} td:last-child {
                     text-align: right;
                 }
-                #${Helper.get_id('container')} label {
+                ${sel('container')} label {
                     color: #111827;
                     font-weight: 600;
                 }
-                #${Helper.get_id('container')} input[type="checkbox"] {
+                ${sel('container')} input[type="checkbox"] {
                     width: 16px;
                     height: 16px;
                     accent-color: #2563eb;
                     cursor: pointer;
                 }
-                #${Helper.get_id('export_button')} {
+                ${sel('export_button')} {
                     width: 100%;
                     padding: 9px 12px;
                     border: 1px solid #1d4ed8;
@@ -170,11 +171,11 @@
                     font-weight: 700;
                     cursor: pointer;
                 }
-                #${Helper.get_id('export_button')}:disabled {
+                ${sel('export_button')}:disabled {
                     opacity: .65;
                     cursor: not-allowed;
                 }
-                #${Helper.get_id('progress')} {
+                ${sel('progress')} {
                     min-height: 18px;
                     max-height: 120px;
                     overflow: auto;
