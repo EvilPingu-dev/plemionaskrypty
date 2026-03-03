@@ -57,25 +57,9 @@
     };
     const AllyMembers = {
         create_ui: function () {
-            const container = document.createElement('div');
-            container.id = Helper.get_id('container');
-            container.classList.add('hm-modern-container');
-            Dialog.show(Helper.get_id(), container.outerHTML);
-
-            const popup_id = `popup_box_${Helper.get_id()}`;
-            let popup = document.getElementById(popup_id);
-            if (!popup) {
-                const all_popups = [...document.querySelectorAll('[id^="popup_box"]')];
-                popup = all_popups.length ? all_popups[all_popups.length - 1] : null;
-            }
-            if (popup) {
-                popup.classList.add('hm-modern-popup');
-                popup.style.width = '420px';
-                popup.style.background = '#0b1f4d';
-                popup.style.border = '2px solid #1e40af';
-                popup.style.borderRadius = '14px';
-                popup.style.boxShadow = '0 20px 45px rgba(2, 6, 23, .45)';
-                popup.style.overflow = 'hidden';
+            const old_overlay = document.getElementById(Helper.get_id('overlay'));
+            if (old_overlay) {
+                old_overlay.remove();
             }
 
             const existing_style = document.getElementById(Helper.get_id('styles'));
@@ -85,137 +69,141 @@
 
             const style = document.createElement('style');
             style.id = Helper.get_id('styles');
-            const popup_selector = popup ? `#${popup.id}` : '[id^="popup_box"]';
             style.textContent = `
-                ${popup_selector} {
-                    border: 2px solid #1e40af !important;
-                    border-radius: 14px !important;
-                    background: #0b1f4d !important;
-                    box-shadow: 0 20px 45px rgba(2, 6, 23, .45) !important;
-                    overflow: hidden !important;
+                #${Helper.get_id('overlay')} {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 20000;
+                    background: rgba(2, 6, 23, .55);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 16px;
                 }
-                ${popup_selector} * {
-                    font-family: Inter, Segoe UI, Roboto, Arial, sans-serif !important;
+                #${Helper.get_id('modal')} {
+                    width: 100%;
+                    max-width: 460px;
+                    background: #ffffff;
+                    border: 2px solid #1d4ed8;
+                    border-radius: 14px;
+                    box-shadow: 0 24px 50px rgba(2, 6, 23, .4);
+                    overflow: hidden;
+                    font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+                    color: #0f172a;
                 }
-                ${popup_selector} > h3,
-                ${popup_selector} .popup_box_header,
-                ${popup_selector} .vis_header {
-                    margin: 0 !important;
-                    padding: 12px 14px !important;
-                    border-bottom: 1px solid #1e3a8a !important;
-                    background: linear-gradient(180deg, #1e3a8a 0%, #0b1f4d 100%) !important;
-                    color: #ffffff !important;
-                    font-weight: 700 !important;
+                #${Helper.get_id('header')} {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                    padding: 12px 14px;
+                    background: linear-gradient(180deg, #1e40af 0%, #1d4ed8 100%);
+                    color: #ffffff;
+                    border-bottom: 1px solid #1e3a8a;
                 }
-                ${popup_selector} .popup_box_content,
-                ${popup_selector} .popup_content,
-                ${popup_selector} > div {
-                    background: #ffffff !important;
-                    color: #0f172a !important;
+                #${Helper.get_id('title')} {
+                    margin: 0;
+                    font-size: 24px;
+                    font-weight: 800;
+                    color: #ffffff;
                 }
-                ${popup_selector} a {
-                    color: #1d4ed8 !important;
+                #${Helper.get_id('close')} {
+                    width: 30px;
+                    height: 30px;
+                    border: 1px solid rgba(255,255,255,.55);
+                    border-radius: 8px;
+                    background: rgba(255,255,255,.12);
+                    color: #fff;
+                    font-size: 18px;
+                    line-height: 1;
+                    cursor: pointer;
                 }
-                ${popup_selector} textarea,
-                ${popup_selector} input[type="text"] {
-                    background: #fff !important;
-                    color: #020617 !important;
-                    border: 1px solid #93c5fd !important;
-                    border-radius: 8px !important;
-                    padding: 8px !important;
+                #${Helper.get_id('close')}:hover {
+                    background: rgba(255,255,255,.2);
                 }
-                ${popup_selector} .hm-modern-container {
+                #${Helper.get_id('container')} {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
-                    padding: 10px;
-                    background: #ffffff !important;
-                    border: 1px solid #bfdbfe;
-                    border-radius: 10px;
+                    padding: 14px;
+                    background: #ffffff;
                 }
-                ${popup_selector} .hm-modern-container h2 {
-                    margin: 0;
-                    font-size: 18px;
-                    font-weight: 700;
-                    color: #0f172a;
-                    text-align: center;
-                }
-                ${popup_selector} .hm-modern-container fieldset {
+                #${Helper.get_id('container')} fieldset {
                     margin: 0;
                     padding: 10px;
                     border: 1px solid #93c5fd;
                     border-radius: 8px;
-                    background: #f8fbff !important;
+                    background: #f8fbff;
                 }
-                ${popup_selector} .hm-modern-container legend {
+                #${Helper.get_id('container')} legend {
                     padding: 0 6px;
-                    font-weight: 700;
                     color: #1e3a8a;
+                    font-weight: 700;
                 }
-                ${popup_selector} .hm-modern-container table {
+                #${Helper.get_id('container')} table {
                     width: 100%;
                     border-collapse: collapse;
                 }
-                ${popup_selector} .hm-modern-container td {
+                #${Helper.get_id('container')} td {
                     padding: 6px 2px;
-                    vertical-align: middle;
                 }
-                ${popup_selector} .hm-modern-container td:last-child {
+                #${Helper.get_id('container')} td:last-child {
                     text-align: right;
                 }
-                ${popup_selector} .hm-modern-container label {
-                    font-weight: 600;
+                #${Helper.get_id('container')} label {
                     color: #111827;
-                    cursor: pointer;
-                    user-select: none;
+                    font-weight: 600;
                 }
-                ${popup_selector} .hm-modern-container input[type="checkbox"] {
+                #${Helper.get_id('container')} input[type="checkbox"] {
                     width: 16px;
                     height: 16px;
-                    cursor: pointer;
                     accent-color: #2563eb;
-                }
-                ${popup_selector} .hm-modern-button {
-                    width: 100%;
-                    padding: 8px 10px;
-                    border: 1px solid #1d4ed8;
-                    border-radius: 7px;
-                    background: linear-gradient(180deg, #2563eb 0%, #1e3a8a 100%);
-                    color: #fff;
-                    font-weight: 700;
-                    letter-spacing: .2px;
                     cursor: pointer;
-                    box-shadow: 0 10px 20px rgba(30, 58, 138, .35);
                 }
-                ${popup_selector} .hm-modern-button:hover:not(:disabled) {
-                    transform: translateY(-1px);
-                    filter: brightness(1.03);
+                #${Helper.get_id('export_button')} {
+                    width: 100%;
+                    padding: 9px 12px;
+                    border: 1px solid #1d4ed8;
+                    border-radius: 8px;
+                    background: linear-gradient(180deg, #2563eb 0%, #1e3a8a 100%);
+                    color: #ffffff;
+                    font-weight: 700;
+                    cursor: pointer;
                 }
-                ${popup_selector} .hm-modern-button:disabled {
-                    opacity: .6;
+                #${Helper.get_id('export_button')}:disabled {
+                    opacity: .65;
                     cursor: not-allowed;
-                    box-shadow: none;
                 }
-                ${popup_selector} .hm-modern-progress {
+                #${Helper.get_id('progress')} {
                     min-height: 18px;
                     max-height: 120px;
                     overflow: auto;
                     white-space: pre-wrap;
-                    font-size: 12px;
-                    line-height: 1.35;
+                    font-size: 13px;
                     color: #111827;
-                    background: #ffffff;
                     border: 1px solid #dbeafe;
                     border-radius: 8px;
                     padding: 6px 8px;
+                    background: #ffffff;
                 }
             `;
             document.head.append(style);
+
+            const overlay = document.createElement('div');
+            overlay.id = Helper.get_id('overlay');
+            overlay.innerHTML = `
+                <div id="${Helper.get_id('modal')}">
+                    <div id="${Helper.get_id('header')}">
+                        <h2 id="${Helper.get_id('title')}">${i18n.TITLE}</h2>
+                        <button id="${Helper.get_id('close')}" type="button" aria-label="Zamknij">×</button>
+                    </div>
+                    <div id="${Helper.get_id('container')}"></div>
+                </div>
+            `;
+            document.body.append(overlay);
         },
         create_controls: function () {
             const container = Helper.get_control('container');
-            const title = document.createElement('h2');
-            title.innerText = i18n.TITLE;
             const fieldset = document.createElement('fieldset');
             const legend = document.createElement('legend');
             legend.innerText = i18n.LABEL.export_option;
@@ -239,12 +227,9 @@
             }
             const button = document.createElement('button');
             button.id = Helper.get_id('export_button');
-            button.classList.add('hm-modern-button');
             button.innerText = i18n.LABEL.export;
             const progress = document.createElement('div');
             progress.id = Helper.get_id('progress');
-            progress.classList.add('hm-modern-progress');
-            container.append(title);
             container.append(fieldset);
             fieldset.append(legend);
             fieldset.append(table);
@@ -259,6 +244,15 @@
             }
             const export_button = Helper.get_control('export_button');
             export_button.addEventListener('click', AllyMembers.export);
+            const close_button = Helper.get_control('close');
+            if (close_button) {
+                close_button.addEventListener('click', () => {
+                    const overlay = Helper.get_control('overlay');
+                    if (overlay) {
+                        overlay.remove();
+                    }
+                });
+            }
         },
         init: async function () {
             AllyMembers.create_ui();
