@@ -61,10 +61,21 @@
             container.id = Helper.get_id('container');
             container.classList.add('hm-modern-container');
             Dialog.show(Helper.get_id(), container.outerHTML);
-            const popup = document.querySelector('[id^="popup_box"]');
+
+            const popup_id = `popup_box_${Helper.get_id()}`;
+            let popup = document.getElementById(popup_id);
+            if (!popup) {
+                const all_popups = [...document.querySelectorAll('[id^="popup_box"]')];
+                popup = all_popups.length ? all_popups[all_popups.length - 1] : null;
+            }
             if (popup) {
                 popup.classList.add('hm-modern-popup');
                 popup.style.width = '420px';
+                popup.style.background = '#eff5ff';
+                popup.style.border = '1px solid #c7d6ff';
+                popup.style.borderRadius = '14px';
+                popup.style.boxShadow = '0 18px 45px rgba(20, 35, 90, .22)';
+                popup.style.overflow = 'hidden';
             }
 
             const existing_style = document.getElementById(Helper.get_id('styles'));
@@ -74,20 +85,21 @@
 
             const style = document.createElement('style');
             style.id = Helper.get_id('styles');
+            const popup_selector = popup ? `#${popup.id}` : '[id^="popup_box"]';
             style.textContent = `
-                .hm-modern-popup {
+                ${popup_selector} {
                     border: 1px solid #c7d6ff !important;
                     border-radius: 14px !important;
                     background: #eff5ff !important;
                     box-shadow: 0 18px 45px rgba(20, 35, 90, .22) !important;
                     overflow: hidden !important;
                 }
-                .hm-modern-popup * {
+                ${popup_selector} * {
                     font-family: Inter, Segoe UI, Roboto, Arial, sans-serif !important;
                 }
-                .hm-modern-popup > h3,
-                .hm-modern-popup .popup_box_header,
-                .hm-modern-popup .vis_header {
+                ${popup_selector} > h3,
+                ${popup_selector} .popup_box_header,
+                ${popup_selector} .vis_header {
                     margin: 0 !important;
                     padding: 12px 14px !important;
                     border-bottom: 1px solid #d7e3ff !important;
@@ -95,24 +107,24 @@
                     color: #1e2a44 !important;
                     font-weight: 700 !important;
                 }
-                .hm-modern-popup .popup_box_content,
-                .hm-modern-popup .popup_content,
-                .hm-modern-popup > div {
+                ${popup_selector} .popup_box_content,
+                ${popup_selector} .popup_content,
+                ${popup_selector} > div {
                     background: transparent !important;
                     color: #2f3d5c !important;
                 }
-                .hm-modern-popup a {
+                ${popup_selector} a {
                     color: #2563eb !important;
                 }
-                .hm-modern-popup textarea,
-                .hm-modern-popup input[type="text"] {
+                ${popup_selector} textarea,
+                ${popup_selector} input[type="text"] {
                     background: #fff !important;
                     color: #1f2a44 !important;
                     border: 1px solid #c9d9ff !important;
                     border-radius: 8px !important;
                     padding: 8px !important;
                 }
-                .hm-modern-popup .hm-modern-container {
+                ${popup_selector} .hm-modern-container {
                     display: flex;
                     flex-direction: column;
                     gap: 12px;
@@ -121,49 +133,49 @@
                     border: 1px solid #c9d8ff;
                     border-radius: 10px;
                 }
-                .hm-modern-popup .hm-modern-container h2 {
+                ${popup_selector} .hm-modern-container h2 {
                     margin: 0;
                     font-size: 18px;
                     font-weight: 700;
                     color: #1e2a44;
                     text-align: center;
                 }
-                .hm-modern-popup .hm-modern-container fieldset {
+                ${popup_selector} .hm-modern-container fieldset {
                     margin: 0;
                     padding: 10px;
                     border: 1px solid #d7e3ff;
                     border-radius: 8px;
                     background: rgba(255,255,255,0.9);
                 }
-                .hm-modern-popup .hm-modern-container legend {
+                ${popup_selector} .hm-modern-container legend {
                     padding: 0 6px;
                     font-weight: 700;
                     color: #33415f;
                 }
-                .hm-modern-popup .hm-modern-container table {
+                ${popup_selector} .hm-modern-container table {
                     width: 100%;
                     border-collapse: collapse;
                 }
-                .hm-modern-popup .hm-modern-container td {
+                ${popup_selector} .hm-modern-container td {
                     padding: 6px 2px;
                     vertical-align: middle;
                 }
-                .hm-modern-popup .hm-modern-container td:last-child {
+                ${popup_selector} .hm-modern-container td:last-child {
                     text-align: right;
                 }
-                .hm-modern-popup .hm-modern-container label {
+                ${popup_selector} .hm-modern-container label {
                     font-weight: 600;
                     color: #2e3a57;
                     cursor: pointer;
                     user-select: none;
                 }
-                .hm-modern-popup .hm-modern-container input[type="checkbox"] {
+                ${popup_selector} .hm-modern-container input[type="checkbox"] {
                     width: 16px;
                     height: 16px;
                     cursor: pointer;
                     accent-color: #3b82f6;
                 }
-                .hm-modern-popup .hm-modern-button {
+                ${popup_selector} .hm-modern-button {
                     width: 100%;
                     padding: 8px 10px;
                     border: 1px solid #2563eb;
@@ -175,16 +187,16 @@
                     cursor: pointer;
                     box-shadow: 0 8px 20px rgba(37, 99, 235, .25);
                 }
-                .hm-modern-popup .hm-modern-button:hover:not(:disabled) {
+                ${popup_selector} .hm-modern-button:hover:not(:disabled) {
                     transform: translateY(-1px);
                     filter: brightness(1.03);
                 }
-                .hm-modern-popup .hm-modern-button:disabled {
+                ${popup_selector} .hm-modern-button:disabled {
                     opacity: .6;
                     cursor: not-allowed;
                     box-shadow: none;
                 }
-                .hm-modern-popup .hm-modern-progress {
+                ${popup_selector} .hm-modern-progress {
                     min-height: 18px;
                     max-height: 120px;
                     overflow: auto;
