@@ -71,10 +71,10 @@
             if (popup) {
                 popup.classList.add('hm-modern-popup');
                 popup.style.width = '420px';
-                popup.style.background = '#eff5ff';
-                popup.style.border = '1px solid #c7d6ff';
+                popup.style.background = '#0b1f4d';
+                popup.style.border = '2px solid #1e40af';
                 popup.style.borderRadius = '14px';
-                popup.style.boxShadow = '0 18px 45px rgba(20, 35, 90, .22)';
+                popup.style.boxShadow = '0 20px 45px rgba(2, 6, 23, .45)';
                 popup.style.overflow = 'hidden';
             }
 
@@ -88,10 +88,10 @@
             const popup_selector = popup ? `#${popup.id}` : '[id^="popup_box"]';
             style.textContent = `
                 ${popup_selector} {
-                    border: 1px solid #c7d6ff !important;
+                    border: 2px solid #1e40af !important;
                     border-radius: 14px !important;
-                    background: #eff5ff !important;
-                    box-shadow: 0 18px 45px rgba(20, 35, 90, .22) !important;
+                    background: #0b1f4d !important;
+                    box-shadow: 0 20px 45px rgba(2, 6, 23, .45) !important;
                     overflow: hidden !important;
                 }
                 ${popup_selector} * {
@@ -102,25 +102,25 @@
                 ${popup_selector} .vis_header {
                     margin: 0 !important;
                     padding: 12px 14px !important;
-                    border-bottom: 1px solid #d7e3ff !important;
-                    background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%) !important;
-                    color: #1e2a44 !important;
+                    border-bottom: 1px solid #1e3a8a !important;
+                    background: linear-gradient(180deg, #1e3a8a 0%, #0b1f4d 100%) !important;
+                    color: #ffffff !important;
                     font-weight: 700 !important;
                 }
                 ${popup_selector} .popup_box_content,
                 ${popup_selector} .popup_content,
                 ${popup_selector} > div {
-                    background: transparent !important;
-                    color: #2f3d5c !important;
+                    background: #ffffff !important;
+                    color: #0f172a !important;
                 }
                 ${popup_selector} a {
-                    color: #2563eb !important;
+                    color: #1d4ed8 !important;
                 }
                 ${popup_selector} textarea,
                 ${popup_selector} input[type="text"] {
                     background: #fff !important;
-                    color: #1f2a44 !important;
-                    border: 1px solid #c9d9ff !important;
+                    color: #020617 !important;
+                    border: 1px solid #93c5fd !important;
                     border-radius: 8px !important;
                     padding: 8px !important;
                 }
@@ -129,28 +129,28 @@
                     flex-direction: column;
                     gap: 12px;
                     padding: 10px;
-                    background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
-                    border: 1px solid #c9d8ff;
+                    background: #ffffff !important;
+                    border: 1px solid #bfdbfe;
                     border-radius: 10px;
                 }
                 ${popup_selector} .hm-modern-container h2 {
                     margin: 0;
                     font-size: 18px;
                     font-weight: 700;
-                    color: #1e2a44;
+                    color: #0f172a;
                     text-align: center;
                 }
                 ${popup_selector} .hm-modern-container fieldset {
                     margin: 0;
                     padding: 10px;
-                    border: 1px solid #d7e3ff;
+                    border: 1px solid #93c5fd;
                     border-radius: 8px;
-                    background: rgba(255,255,255,0.9);
+                    background: #f8fbff !important;
                 }
                 ${popup_selector} .hm-modern-container legend {
                     padding: 0 6px;
                     font-weight: 700;
-                    color: #33415f;
+                    color: #1e3a8a;
                 }
                 ${popup_selector} .hm-modern-container table {
                     width: 100%;
@@ -165,7 +165,7 @@
                 }
                 ${popup_selector} .hm-modern-container label {
                     font-weight: 600;
-                    color: #2e3a57;
+                    color: #111827;
                     cursor: pointer;
                     user-select: none;
                 }
@@ -173,19 +173,19 @@
                     width: 16px;
                     height: 16px;
                     cursor: pointer;
-                    accent-color: #3b82f6;
+                    accent-color: #2563eb;
                 }
                 ${popup_selector} .hm-modern-button {
                     width: 100%;
                     padding: 8px 10px;
-                    border: 1px solid #2563eb;
+                    border: 1px solid #1d4ed8;
                     border-radius: 7px;
-                    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+                    background: linear-gradient(180deg, #2563eb 0%, #1e3a8a 100%);
                     color: #fff;
                     font-weight: 700;
                     letter-spacing: .2px;
                     cursor: pointer;
-                    box-shadow: 0 8px 20px rgba(37, 99, 235, .25);
+                    box-shadow: 0 10px 20px rgba(30, 58, 138, .35);
                 }
                 ${popup_selector} .hm-modern-button:hover:not(:disabled) {
                     transform: translateY(-1px);
@@ -203,7 +203,11 @@
                     white-space: pre-wrap;
                     font-size: 12px;
                     line-height: 1.35;
-                    color: #374151;
+                    color: #111827;
+                    background: #ffffff;
+                    border: 1px solid #dbeafe;
+                    border-radius: 8px;
+                    padding: 6px 8px;
                 }
             `;
             document.head.append(style);
