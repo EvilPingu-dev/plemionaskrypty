@@ -60,7 +60,89 @@
             const container = document.createElement('div');
             container.id = Helper.get_id('container');
             Dialog.show(Helper.get_id(), container.outerHTML);
-            document.querySelector('[id^="popup_box"]').style.width = '300px';
+            const popup = document.querySelector('[id^="popup_box"]');
+            popup.style.width = '380px';
+
+            const style = document.createElement('style');
+            style.id = Helper.get_id('styles');
+            style.textContent = `
+                #${Helper.get_id('container')} {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    padding: 10px;
+                    background: linear-gradient(180deg, #f8f5ef 0%, #f2ede2 100%);
+                    border: 1px solid #b49b72;
+                    border-radius: 10px;
+                }
+                #${Helper.get_id('container')} h2 {
+                    margin: 0;
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #3b2c17;
+                    text-align: center;
+                }
+                #${Helper.get_id('container')} fieldset {
+                    margin: 0;
+                    padding: 10px;
+                    border: 1px solid #cab48e;
+                    border-radius: 8px;
+                    background: rgba(255,255,255,0.72);
+                }
+                #${Helper.get_id('container')} legend {
+                    padding: 0 6px;
+                    font-weight: 700;
+                    color: #584221;
+                }
+                #${Helper.get_id('container')} table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                #${Helper.get_id('container')} td {
+                    padding: 6px 2px;
+                    vertical-align: middle;
+                }
+                #${Helper.get_id('container')} td:last-child {
+                    text-align: right;
+                }
+                #${Helper.get_id('container')} label {
+                    font-weight: 600;
+                    color: #3f311a;
+                    cursor: pointer;
+                    user-select: none;
+                }
+                #${Helper.get_id('container')} input[type="checkbox"] {
+                    width: 16px;
+                    height: 16px;
+                    cursor: pointer;
+                    accent-color: #7d5a2d;
+                }
+                #${Helper.get_id('export_button')} {
+                    width: 100%;
+                    padding: 8px 10px;
+                    border: 1px solid #6f4f24;
+                    border-radius: 7px;
+                    background: linear-gradient(180deg, #a87a3b 0%, #7e5928 100%);
+                    color: #fff;
+                    font-weight: 700;
+                    letter-spacing: .2px;
+                    cursor: pointer;
+                }
+                #${Helper.get_id('export_button')}:disabled {
+                    opacity: .6;
+                    cursor: not-allowed;
+                }
+                #${Helper.get_id('progress')} {
+                    min-height: 18px;
+                    max-height: 120px;
+                    overflow: auto;
+                    white-space: pre-wrap;
+                    font-size: 12px;
+                    line-height: 1.35;
+                    color: #4a3a1f;
+                }
+            `;
+            document.head.append(style);
         },
         create_controls: function () {
             const container = Helper.get_control('container');
@@ -91,7 +173,6 @@
             button.id = Helper.get_id('export_button');
             button.innerText = i18n.LABEL.export;
             button.classList.add('btn');
-            button.style.float = 'right';
             const progress = document.createElement('div');
             progress.id = Helper.get_id('progress');
             container.append(title);
