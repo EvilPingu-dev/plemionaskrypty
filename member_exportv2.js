@@ -15,10 +15,10 @@
             SKIPPED_PLAYERS: 'Pomini\u{119}ci gracze'
         },
         LABEL: {
-            export_option: 'Opcje exportu',
+            export_option: 'Opcje eksportu',
             members_troops: 'Wojska',
             members_buildings: 'Budynki',
-            export: 'Export'
+            export: 'Eksportuj'
         },
         TITLE: 'Hermitowscy Cz\u{142}onkowie',
         PLAYER_NO_ACCESS: '(brak dost\u{119}pu)',
@@ -47,7 +47,7 @@
                 return;
             }
             const gui =
-                `<h2>WTF - What a Terrible Failure</h2>
+                `<h2>Wystąpił błąd</h2>
                     <p><strong>${i18n.ERROR_MESSAGE}</strong><br/>
                         <textarea rows='5' cols='42'>${error}\n\n${error.stack}</textarea><br/>
                         <a href='${i18n.FORUM_THREAD_HREF}'>${i18n.FORUM_THREAD}</a>
@@ -71,28 +71,28 @@
                     flex-direction: column;
                     gap: 12px;
                     padding: 10px;
-                    background: linear-gradient(180deg, #f8f5ef 0%, #f2ede2 100%);
-                    border: 1px solid #b49b72;
+                    background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+                    border: 1px solid #c9d8ff;
                     border-radius: 10px;
                 }
                 #${Helper.get_id('container')} h2 {
                     margin: 0;
                     font-size: 18px;
                     font-weight: 700;
-                    color: #3b2c17;
+                    color: #1e2a44;
                     text-align: center;
                 }
                 #${Helper.get_id('container')} fieldset {
                     margin: 0;
                     padding: 10px;
-                    border: 1px solid #cab48e;
+                    border: 1px solid #d7e3ff;
                     border-radius: 8px;
-                    background: rgba(255,255,255,0.72);
+                    background: rgba(255,255,255,0.9);
                 }
                 #${Helper.get_id('container')} legend {
                     padding: 0 6px;
                     font-weight: 700;
-                    color: #584221;
+                    color: #33415f;
                 }
                 #${Helper.get_id('container')} table {
                     width: 100%;
@@ -107,7 +107,7 @@
                 }
                 #${Helper.get_id('container')} label {
                     font-weight: 600;
-                    color: #3f311a;
+                    color: #2e3a57;
                     cursor: pointer;
                     user-select: none;
                 }
@@ -115,14 +115,14 @@
                     width: 16px;
                     height: 16px;
                     cursor: pointer;
-                    accent-color: #7d5a2d;
+                    accent-color: #3b82f6;
                 }
                 #${Helper.get_id('export_button')} {
                     width: 100%;
                     padding: 8px 10px;
-                    border: 1px solid #6f4f24;
+                    border: 1px solid #2563eb;
                     border-radius: 7px;
-                    background: linear-gradient(180deg, #a87a3b 0%, #7e5928 100%);
+                    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
                     color: #fff;
                     font-weight: 700;
                     letter-spacing: .2px;
@@ -139,7 +139,7 @@
                     white-space: pre-wrap;
                     font-size: 12px;
                     line-height: 1.35;
-                    color: #4a3a1f;
+                    color: #374151;
                 }
             `;
             document.head.append(style);
@@ -916,8 +916,8 @@ save_as_file: function (content) {
     output += "[/table]";
 
     const gui =
-        `<h2>BBCode – zum Kopieren</h2>
-        <p>Sortiert nach Gesamtpunkten pro Spieler (DESC)</p>
+        `<h2>BBCode – skopiuj</h2>
+        <p>Posortowano malejąco według sumy punktów gracza</p>
         <textarea rows="25" cols="100" style="width:100%;">${output}</textarea>`;
     Dialog.show(namespace + ".bbcode_output", gui);
 },
