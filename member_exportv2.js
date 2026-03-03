@@ -63,9 +63,51 @@
             const popup = document.querySelector('[id^="popup_box"]');
             popup.style.width = '380px';
 
+            const existing_style = document.getElementById(Helper.get_id('styles'));
+            if (existing_style) {
+                existing_style.remove();
+            }
+
             const style = document.createElement('style');
             style.id = Helper.get_id('styles');
             style.textContent = `
+                [id^="popup_box"] {
+                    border: 1px solid #c7d6ff !important;
+                    border-radius: 14px !important;
+                    background: #eff5ff !important;
+                    box-shadow: 0 18px 45px rgba(20, 35, 90, .22) !important;
+                    overflow: hidden !important;
+                }
+                [id^="popup_box"] * {
+                    font-family: Inter, Segoe UI, Roboto, Arial, sans-serif !important;
+                }
+                [id^="popup_box"] > h3,
+                [id^="popup_box"] .popup_box_header,
+                [id^="popup_box"] .vis_header {
+                    margin: 0 !important;
+                    padding: 12px 14px !important;
+                    border-bottom: 1px solid #d7e3ff !important;
+                    background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%) !important;
+                    color: #1e2a44 !important;
+                    font-weight: 700 !important;
+                }
+                [id^="popup_box"] .popup_box_content,
+                [id^="popup_box"] .popup_content,
+                [id^="popup_box"] > div {
+                    background: transparent !important;
+                    color: #2f3d5c !important;
+                }
+                [id^="popup_box"] a {
+                    color: #2563eb !important;
+                }
+                [id^="popup_box"] textarea,
+                [id^="popup_box"] input[type="text"] {
+                    background: #fff !important;
+                    color: #1f2a44 !important;
+                    border: 1px solid #c9d9ff !important;
+                    border-radius: 8px !important;
+                    padding: 8px !important;
+                }
                 #${Helper.get_id('container')} {
                     display: flex;
                     flex-direction: column;
@@ -127,10 +169,16 @@
                     font-weight: 700;
                     letter-spacing: .2px;
                     cursor: pointer;
+                    box-shadow: 0 8px 20px rgba(37, 99, 235, .25);
+                }
+                #${Helper.get_id('export_button')}:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                    filter: brightness(1.03);
                 }
                 #${Helper.get_id('export_button')}:disabled {
                     opacity: .6;
                     cursor: not-allowed;
+                    box-shadow: none;
                 }
                 #${Helper.get_id('progress')} {
                     min-height: 18px;
@@ -172,7 +220,6 @@
             const button = document.createElement('button');
             button.id = Helper.get_id('export_button');
             button.innerText = i18n.LABEL.export;
-            button.classList.add('btn');
             const progress = document.createElement('div');
             progress.id = Helper.get_id('progress');
             container.append(title);
