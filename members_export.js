@@ -985,8 +985,6 @@
             return [table, skipped_players];
         },
 
-
-
 save_as_file: function (content) {
     const normalize_building_name = function (name) {
         return String(name)
