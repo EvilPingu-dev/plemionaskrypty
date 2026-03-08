@@ -890,100 +890,81 @@
 
             return header;
         },
-        generate_table: function (members_metadata, members_data, export_options) {
-            AllyMembers.print_progress(i18n.PROGRESS.TABLE);
+        generate_table: function (members_info, member_data, export_options) {
+    const table = [];
+    const skipped_players = [];
 
-            const header = AllyMembers.generate_table_header(export_options);
-            const members_info = AllyMembers.merge_member_metadata(members_metadata, export_options);
+    // Nagłówek
+    const header = [
+        '"Gracz"',
+        '"ID"',
+        '"Wioski"',
+        ...game_data.units.map(u => `"${u}"`),
+        '"Punkty"',
+        '"Ataki"',
+        '"Obrona"'
+    ];
 
-            const table = [header.join(",")];
+    table.push(header.join(','));
 
-            const skipped_players = [];
+    // SUMY – inicjalizacja
+    const totals = new Array(header.length).fill(0);
 
-            for (const player_id in members_info) {
-                const member_metadata_info = members_info[player_id];
-                const member_data = members_data[player_id];
+    // Generowanie wierszy
+    for (const mode in members_info) {
+        for (const member of members_info[mode]) {
+            const pid = member.player_id;
+            const pdata = member_data[pid];
 
-                if (!AllyMembers.export_options
-                    .filter(export_name => export_options[export_name])
-                    .map(export_name => member_metadata_info.access_granted[export_name])
-                    .reduce((pv, cv) => cv || pv, false)) {
-                    skipped_players.push({
-                        player_name: member_metadata_info.player_name,
-                        reason: i18n.ERROR.NO_PERMISSIONS
-                    });
-                    continue;
-                }
+            if (!pdata) continue;
 
-                if (Object.keys(member_data).length === 0) {
-                    skipped_players.push({
-                        player_name: member_metadata_info.player_name,
-                        reason: i18n.ERROR.NO_VILLAGES
-                    });
-                    continue;
-                }
+            const row = [];
 
-                for (const village_coords in member_data) {
-                    const row = [];
-                    const village_data = member_data[village_coords];
-                    row.push(`"${member_metadata_info.player_name}"`, `"${village_data.village_name}"`, village_data.coords);
-                    if (export_options['members_troops'] || export_options['members_defense']) {
-                        row.push(village_data.incoming !== null
-                            ? village_data.incoming
-                            : ''
-                        );
-                    }
-                    if (export_options['members_troops']) {
-                        row.push(village_data.outgoing !== null
-                            ? village_data.outgoing
-                            : ''
-                        );
-                        if (member_metadata_info.access_granted['members_troops']) {
-                            for (const unit_name of game_data.units) {
-                                row.push(village_data.units[unit_name] !== null
-                                    ? village_data.units[unit_name]
-                                    : ''
-                                );
-                            }
-                        } else {
-                            row.push(...new Array(game_data.units.length).fill(''));
-                        }
-                    }
-                    if (export_options['members_buildings']) {
-                        if (member_metadata_info.access_granted['members_buildings']) {
-                            row.push(village_data.points);
-                            for (const building_name of AllyMembers.building_names) {
-                                row.push(village_data.buildings[building_name]);
-                            }
-                        } else {
-                            row.push('');
-                            row.push(...new Array(AllyMembers.building_names.length).fill(''));
-                        }
-                    } else if (export_options['members_troops']) {
-                        row.push(member_metadata_info.access_granted['members_troops'] && village_data.points !== null
-                            ? village_data.points
-                            : ''
-                        );
-                    }
-                    if (export_options['members_defense']) {
-                        if (member_metadata_info.access_granted['members_defense']) {
-                            for (const troops_type of ['village', 'transit']) {
-                                for (const unit_name of game_data.units) {
-                                    row.push(village_data[troops_type][unit_name] !== null
-                                        ? village_data[troops_type][unit_name]
-                                        : ''
-                                    );
-                                }
-                            }
-                        } else {
-                            row.push(...new Array(2 * game_data.units.length).fill(''));
-                        }
-                    }
-                    table.push(row.join(','));
-                }
+            row.push(`"${member.player_name}"`);
+            row.push(pid);
+
+            const villages = pdata[mode]?.length || 0;
+            row.push(villages);
+
+            // Jednostki
+            for (const unit of game_data.units) {
+                const sum = pdata.members_troops?.reduce((a, v) => a + (v[unit] || 0), 0) || 0;
+                row.push(sum);
             }
-            return [table, skipped_players];
-        },
+
+            // Punkty
+            const points = pdata.members_troops?.reduce((a, v) => a + (v.points || 0), 0) || 0;
+            row.push(points);
+
+            // Ataki / Obrona
+            const incoming = pdata.members_troops?.reduce((a, v) => a + (v.incoming || 0), 0) || 0;
+            const outgoing = pdata.members_troops?.reduce((a, v) => a + (v.outgoing || 0), 0) || 0;
+
+            row.push(outgoing);
+            row.push(incoming);
+
+            // Dodajemy do tabeli
+            table.push(row.join(','));
+
+            // SUMOWANIE
+            row.forEach((value, index) => {
+                const num = Number(String(value).replace(/\./g, ''));
+                if (!isNaN(num)) totals[index] += num;
+            });
+        }
+    }
+
+    // Wiersz SUM
+    const totalRow = totals.map((v, i) => {
+        if (i === 0) return '"SUMA"';
+        return v === 0 ? '' : v;
+    });
+
+    table.push(totalRow.join(','));
+
+    return [table, skipped_players];
+},
+
 
 save_as_file: function (content) {
     const normalize_building_name = function (name) {
