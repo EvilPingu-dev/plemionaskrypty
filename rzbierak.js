@@ -5,7 +5,7 @@ try {
 const NS = "rzb";
 const baseUrl = location.origin + "/game.php";
 
-// ✅ CLEAN (unicode + NBSP fix)
+// ✅ CLEAN
 const clean = (str) => {
     return str
         .normalize("NFKD")
@@ -16,138 +16,118 @@ const clean = (str) => {
         .toLowerCase();
 };
 
-// helper
 const $ = (id) => document.getElementById(NS + id);
 
-// ✅ STYLE
+// ✅ UI
 const style = document.createElement("style");
 style.textContent = `
-#${NS}_overlay{
- position:fixed;inset:0;background:rgba(2,6,23,.75);
- display:flex;align-items:center;justify-content:center;
- z-index:9999999;font-family:Inter,Segoe UI;
-}
-#${NS}_modal{
- width:440px;background:#fff;border-radius:14px;
- border:2px solid #2563eb;overflow:hidden;
-}
-#${NS}_header{
- padding:12px;color:#fff;
- background:linear-gradient(180deg,#0b1f4d,#2563eb);
- display:flex;justify-content:space-between;
-}
-#${NS}_body{padding:12px}
-#${NS}_body textarea{
- width:100%;height:90px;padding:8px;
- border-radius:8px;border:1px solid #bfdbfe;
-}
-#${NS}_btn{
- width:100%;margin-top:10px;padding:8px;
- border-radius:8px;border:none;
- background:linear-gradient(180deg,#2563eb,#1e3a8a);
- color:#fff;font-weight:bold;
-}
-#${NS}_log{font-size:12px;margin-top:8px;}
-#${NS}_bar{height:6px;background:#2563eb;width:0%;}
-#${NS}_progress{background:#e5e7eb;margin-top:8px;}
+#${NS}_overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;justify-content:center;align-items:center;z-index:999999;}
+#${NS}_modal{background:white;padding:10px;width:400px;border-radius:10px;}
+textarea{width:100%;height:80px;}
+button{margin-top:8px;width:100%;}
 `;
 document.head.appendChild(style);
 
-// ✅ SCRIPT
 const Script = {
 
-target: {},     // player -> [tribes]
-results: [],
-seen: new Set(),
+target:{},
+results:[],
+seen:new Set(),
 
 init(){
 
  document.getElementById(NS+"_overlay")?.remove();
 
- const el = document.createElement("div");
- el.id = NS+"_overlay";
+ const el=document.createElement("div");
+ el.id=NS+"_overlay";
 
- el.innerHTML = `
+ el.innerHTML=`
  <div id="${NS}_modal">
-  <div id="${NS}_header">Scavenge Ranking PRO
-   <button id="${NS}_close">✕</button>
-  </div>
-  <div id="${NS}_body">
-
-   <textarea id="${NS}_input"
-    placeholder="One tribe per line&#10;:G:&#10;~G~"></textarea>
-
-   <button id="${NS}_btn">START</button>
-
-   <div id="${NS}_progress"><div id="${NS}_bar"></div></div>
-   <div id="${NS}_log"></div>
-
-  </div>
+  <h3>Scavenge Ranking</h3>
+  <textarea id="${NS}_input"></textarea>
+  <button id="${NS}_btn">START</button>
+  <div id="${NS}_log"></div>
  </div>
  `;
 
  document.body.appendChild(el);
 
- document.getElementById(NS+"_close").onclick = ()=>el.remove();
- document.getElementById(NS+"_btn").onclick = ()=>this.start();
+ document.getElementById(NS+"_btn").onclick=()=>this.start();
 },
 
-log(t){ $( "_log").innerText = t; },
-progress(p){ document.getElementById(NS+"_bar").style.width = p+"%"; },
+log(t){ $( "_log").innerText=t },
 
 async fetchDoc(url){
- const r = await fetch(url);
- const tx = await r.text();
+ const r=await fetch(url);
+ const tx=await r.text();
  return new DOMParser().parseFromString(tx,"text/html");
 },
 
-// ✅ MEMBERS
-async getMembers(tag){
+// ✅ GET ALLY ID FROM TAG
+async getAllyId(tag){
 
- const url = `${baseUrl}?screen=ally&mode=members&tag=${tag}`;
+ const url = `${baseUrl}?screen=ranking&mode=ally&name=${encodeURIComponent(tag)}`;
  const doc = await this.fetchDoc(url);
 
- let arr = [];
+ const link = doc.querySelector("#ally_ranking_table a[href*='info_ally']");
+
+ if(!link) return null;
+
+ const id = new URLSearchParams(link.href.split("?")[1]).get("id");
+
+ console.log("ALLY ID:", tag, id);
+
+ return id;
+},
+
+// ✅ MEMBERS VIA ID
+async getMembers(tag){
+
+ const id = await this.getAllyId(tag);
+ if(!id) return [];
+
+ const url = `${baseUrl}?screen=ally&mode=members&id=${id}`;
+ const doc = await this.fetchDoc(url);
+
+ let arr=[];
 
  doc.querySelectorAll("#ally_content table tr").forEach((row,i)=>{
   if(i===0) return;
 
-  const link = row.querySelector("a[href*='info_player']");
-  if(link){
-    arr.push(clean(link.textContent));
-  }
+  const link=row.querySelector("a[href*='info_player']");
+  if(link) arr.push(clean(link.textContent));
  });
 
- console.log("MEMBERS:", tag, arr.slice(0,5));
+ console.log("MEMBERS:", tag, arr.length);
+
  return arr;
 },
 
 async start(){
 
- let input = $( "_input").value;
+ this.target={};
+ this.results=[];
+ this.seen=new Set();
 
- let tags = input
-  .split(/\n|\s/)
-  .map(t=>t.trim())
-  .filter(Boolean);
+ const input=$( "_input").value;
 
- this.log("Loading members...");
+ const tags=input.split(/\n|\s/).map(x=>x.trim()).filter(Boolean);
+
+ this.log("Loading tribes...");
 
  for(let t of tags){
 
-  let members = await this.getMembers(t);
+  const members=await this.getMembers(t);
 
   for(let p of members){
-
-    if(!this.target[p]) this.target[p] = [];
-    this.target[p].push(t); // ✅ mehrere tribes speichern
-
+    if(!this.target[p]) this.target[p]=[];
+    this.target[p].push(t);
   }
  }
 
- console.log("TARGET SAMPLE:", this.target);
+ console.log("TARGET:",this.target);
 
- this.scan();
+ await this.scan();
 },
 
 async scan(){
@@ -155,45 +135,39 @@ async scan(){
  for(let i=0;i<200;i++){
 
   this.log("Scanning "+i);
-  this.progress((i/200)*100);
 
-  const doc = await this.fetchDoc(
-   `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`
-  );
+  const doc=await this.fetchDoc(`${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`);
 
-  const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
-  if(rows.length<=1) break;
+  const rows=doc.querySelectorAll("#in_a_day_ranking_table tr");
 
   rows.forEach(r=>{
 
-   const td = r.querySelectorAll("td");
+   const td=r.querySelectorAll("td");
    if(td.length<5) return;
 
-   const link = td[1].querySelector("a");
+   const link=td[1].querySelector("a");
    if(!link) return;
 
-   const playerClean = clean(link.textContent);
+   const playerRaw=link.textContent;
+   const player=clean(playerRaw);
 
-   // ✅ MATCH
-   if(!this.target[playerClean]) return;
+   if(!this.target[player]) return;
 
-   // ✅ DUPLICATE CHECK
-   if(this.seen.has(playerClean)) return;
-   this.seen.add(playerClean);
+   if(this.seen.has(player)) return;
+   this.seen.add(player);
 
-   const allies = this.target[playerClean].join(", ");
+   const allies=this.target[player].join(", ");
 
    this.results.push({
-    rank: td[0].innerText,
-    player: link.textContent.trim(),
-    ally: allies,
-    points: td[3].innerText,
-    time: td[4].innerText
+    rank:td[0].innerText,
+    player:playerRaw.trim(),
+    ally:allies,
+    points:td[3].innerText,
+    time:td[4].innerText
    });
 
   });
 
-  await new Promise(r=>setTimeout(r,60));
  }
 
  this.build();
@@ -201,45 +175,38 @@ async scan(){
 
 build(){
 
- let list = this.results;
+ let list=this.results;
 
  list.sort((a,b)=>
-  parseInt(b.points.replace(/\./g,'')) -
+  parseInt(b.points.replace(/\./g,''))-
   parseInt(a.points.replace(/\./g,''))
  );
 
- this.log("Found "+list.length+" players");
-
- let txt = "[table]\n";
- txt += "[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
+ let txt="[table]\n";
+ txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
 
  list.forEach((p,i)=>{
-  txt += `[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
+  txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
  });
 
- txt += "[/table]";
+ txt+="[/table]";
 
  this.show(txt);
 },
 
 show(txt){
 
- const div = document.createElement("div");
+ const d=document.createElement("div");
 
- div.style = `
- position:fixed;inset:0;background:black;
- display:flex;align-items:center;justify-content:center;
- z-index:99999999;
- `;
+ d.style="position:fixed;inset:0;background:black;display:flex;justify-content:center;align-items:center;z-index:999999";
 
- div.innerHTML = `
+ d.innerHTML=`
  <div style="background:white;width:80%;padding:10px">
-  <textarea style="width:100%;height:400px">${txt}</textarea>
-  <button onclick="this.parentElement.parentElement.remove()">Close</button>
+ <textarea style="width:100%;height:400px">${txt}</textarea>
  </div>
  `;
 
- document.body.appendChild(div);
+ document.body.appendChild(d);
 }
 
 };
@@ -248,7 +215,7 @@ Script.init();
 
 } catch(e){
  console.error(e);
- alert("Error: "+e.message);
+ alert(e.message);
 }
 
 })();
