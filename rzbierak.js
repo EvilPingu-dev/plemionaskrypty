@@ -8,33 +8,52 @@ const baseUrl = location.origin + "/game.php";
 // ✅ helper
 const $ = id => document.getElementById(NS + id);
 
-// ✅ clean (nur für player)
+// ✅ clean
 const cleanPlayer = str =>
  str.replace(/\u00A0/g," ")
     .replace(/\s+/g," ")
     .trim();
 
-// ✅ tribe normalize minimal
 const normTribe = str =>
  str.replace(/\s/g,"").trim();
 
-// ✅ LOG CONTROL
-const DEBUG = true;
-const DBG = (...args) => DEBUG && console.log(...args);
+// ✅ DEBUG (nur MATCH behalten)
+const logMatch = (...args) => console.log("✅ MATCH:", ...args);
 
-// ✅ UI
+// ✅ UI (wieder hübsch 😄)
 const style = document.createElement("style");
 style.textContent = `
-#${NS}_overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;justify-content:center;align-items:center;z-index:999999;}
-#${NS}_modal{background:white;padding:10px;width:420px;border-radius:10px;}
-textarea{width:100%;height:80px}
-button{width:100%;margin-top:6px}
-#${NS}_bar{height:6px;background:#2563eb;width:0}
-#${NS}_progress{background:#eee;margin-top:6px}
-#${NS}_log{font-size:12px;margin-top:5px;max-height:120px;overflow:auto;border:1px solid #ddd;padding:4px;}
+#${NS}_overlay{
+ position:fixed;inset:0;background:rgba(2,6,23,.75);
+ display:flex;align-items:center;justify-content:center;
+ z-index:9999999;font-family:Inter,Segoe UI;
+}
+#${NS}_modal{
+ width:420px;background:#fff;border-radius:12px;
+ border:2px solid #2563eb;overflow:hidden;
+}
+#${NS}_header{
+ padding:10px;color:#fff;
+ background:linear-gradient(180deg,#0b1f4d,#2563eb);
+ display:flex;justify-content:space-between;
+}
+#${NS}_body{padding:10px}
+#${NS}_body textarea{
+ width:100%;height:80px;padding:6px;
+ border-radius:6px;border:1px solid #bfdbfe;
+}
+#${NS}_btn{
+ width:100%;margin-top:8px;padding:8px;
+ border-radius:6px;border:none;
+ background:#2563eb;color:#fff;font-weight:bold;
+}
+#${NS}_progress{height:6px;background:#eee;margin-top:6px}
+#${NS}_bar{height:100%;width:0;background:#2563eb}
+#${NS}_log{font-size:12px;margin-top:5px}
 `;
 document.head.appendChild(style);
 
+// ✅ SCRIPT
 const Script = {
 
 results: [],
@@ -51,21 +70,29 @@ init(){
 
  el.innerHTML = `
  <div id="${NS}_modal">
+  <div id="${NS}_header">
+    Scavenge PRO
+    <button id="${NS}_close">✕</button>
+  </div>
+  <div id="${NS}_body">
+
    <textarea id="${NS}_input" placeholder=":G:\n~G~"></textarea>
-   <button id="${NS}_start">START</button>
+
+   <button id="${NS}_btn">START</button>
+
    <div id="${NS}_progress"><div id="${NS}_bar"></div></div>
    <div id="${NS}_log"></div>
+
+  </div>
  </div>`;
 
  document.body.appendChild(el);
 
- $( "_start").onclick = ()=>this.start();
+ document.getElementById(NS+"_close").onclick = ()=>el.remove();
+ document.getElementById(NS+"_btn").onclick = ()=>this.start();
 },
 
-log(t){
- $( "_log").innerText = t + "\n" + $( "_log").innerText;
-},
-
+log(t){ $( "_log").innerText = t },
 prog(p){ $( "_bar").style.width = p+"%" },
 
 async fetchDoc(url){
@@ -73,7 +100,6 @@ async fetchDoc(url){
  const r = await fetch(url);
 
  if(r.status === 429){
-   DBG("⚠️ 429 hit, waiting...");
    await new Promise(r=>setTimeout(r,1500));
    return this.fetchDoc(url);
  }
@@ -92,8 +118,7 @@ async start(){
   .map(x=>normTribe(x))
   .filter(Boolean);
 
- DBG("🎯 TARGET TRIBES:", this.targets);
- this.log("Targets: " + this.targets.join(", "));
+ this.log("Scanning...");
 
  await this.scan();
 },
@@ -107,42 +132,23 @@ async scan(){
   );
 
   const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
-
   if(rows.length <= 1) break;
 
-  rows.forEach((r, idx)=>{
+  rows.forEach(r=>{
 
     const td = r.querySelectorAll("td");
     if(td.length < 5) return;
 
     const player = cleanPlayer(td[1].textContent);
     const tribeRaw = td[2].textContent.trim();
-    const tribeNorm = normTribe(tribeRaw);
+    const tribe = normTribe(tribeRaw);
 
-    const match = this.targets.some(t => tribeNorm.includes(t));
-
-    // ✅ DEBUG FIRST 2 PAGES FULL
-    if(i < 2){
-      DBG({
-        player,
-        tribeRaw,
-        tribeNorm,
-        targets: this.targets,
-        match
-      });
-    }
-
-    // ✅ visual debug
-    if(match){
-      DBG("✅ MATCH:", player, "→", tribeRaw);
-    } else if(i < 1){
-      DBG("❌ SKIP:", player, "→", tribeRaw);
-    }
-
-    if(!match) return;
+    if(!this.targets.some(t => tribe.includes(t))) return;
 
     if(this.seen.has(player)) return;
     this.seen.add(player);
+
+    logMatch(player, "→", tribeRaw); // ✅ EINZIGER DEBUG
 
     this.found++;
 
@@ -156,7 +162,7 @@ async scan(){
 
   });
 
-  this.log(`Found: ${this.found} | Page ${i}`);
+  this.log(`Found: ${this.found}`);
   this.prog((i/200)*100);
 
   await new Promise(r=>setTimeout(r,300));
@@ -208,4 +214,3 @@ Script.init();
 }
 
 })();
-``
