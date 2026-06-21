@@ -5,10 +5,10 @@ try {
 const NS = "rzb";
 const baseUrl = location.origin + "/game.php";
 
-// ✅ CLEAN FUNCTION (FIXT DEIN PROBLEM)
+// ✅ CLEAN FUNCTION (FIX for NBSP + weird chars)
 const clean = (str) => {
     return str
-        .replace(/\u00A0/g, " ")   // NBSP fix
+        .replace(/\u00A0/g, " ")
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
@@ -17,7 +17,7 @@ const clean = (str) => {
 // ✅ helper
 const $ = (id) => document.getElementById(NS + id);
 
-// ✅ STYLE (modern blue UI)
+// ✅ MODERN BLUE UI
 const style = document.createElement("style");
 style.textContent = `
 #${NS}_overlay{
@@ -62,13 +62,14 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// ✅ MAIN SCRIPT
+// ✅ MAIN
 const Script = {
 
 target: new Set(),
 found: new Set(),
 results: [],
 debugOnce: false,
+memberDebug: false,
 
 init(){
 
@@ -115,6 +116,7 @@ async fetchDoc(url){
  return new DOMParser().parseFromString(tx,"text/html");
 },
 
+// ✅ ✅ FIXED MEMBER PARSER
 async getMembers(tag){
 
  const url = `${baseUrl}?screen=ally&mode=members&tag=${tag}`;
@@ -122,14 +124,25 @@ async getMembers(tag){
 
  let arr=[];
 
- doc.querySelectorAll("#ally_content table tr").forEach((r,i)=>{
+ doc.querySelectorAll("#ally_content table tr").forEach((row,i)=>{
+
   if(i===0) return;
-  let td=r.querySelectorAll("td");
-  if(td[1]){
-    const name = clean(td[1].textContent);
+
+  const link = row.querySelector("a[href*='info_player']");
+
+  if(link){
+    const name = clean(link.textContent);
     arr.push(name);
   }
+
  });
+
+ // ✅ DEBUG MEMBERS
+ if(!this.memberDebug){
+    console.log("=== MEMBERS DEBUG ===");
+    console.log(arr.slice(0,10));
+    this.memberDebug = true;
+ }
 
  return arr;
 },
@@ -157,8 +170,7 @@ async start(){
 
  this.log(`Players loaded: ${this.target.size}`);
 
- // DEBUG MEMBERS
- console.log("=== MEMBERS ===");
+ console.log("=== TARGET SET ===");
  console.log([...this.target].slice(0,10));
 
  await this.scan();
@@ -184,8 +196,9 @@ async scan(){
 
    const player = clean(td[1].textContent);
 
+   // ✅ DEBUG FIRST ROW
    if(!this.debugOnce){
-    console.log("=== DEBUG FIRST ROW ===");
+    console.log("=== DEBUG RANKING ROW ===");
     console.log("RAW:", td[1].innerHTML);
     console.log("CLEAN:", player);
     this.debugOnce = true;
