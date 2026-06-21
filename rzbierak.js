@@ -5,32 +5,31 @@ try {
 const NS = "rzb";
 const baseUrl = location.origin + "/game.php";
 
-// ✅ ULTRA CLEAN (Unicode + NBSP + alles)
+// ✅ CLEAN (unicode + NBSP fix)
 const clean = (str) => {
     return str
-        .normalize("NFKD")                     // unicode normalize
-        .replace(/[\u0300-\u036f]/g, "")       // remove accents
-        .replace(/\u00A0/g, " ")               // NBSP
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\u00A0/g, " ")
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
 };
 
-// ✅ helper
+// helper
 const $ = (id) => document.getElementById(NS + id);
 
-// ✅ STYLE (blue UI)
+// ✅ STYLE
 const style = document.createElement("style");
 style.textContent = `
 #${NS}_overlay{
  position:fixed;inset:0;background:rgba(2,6,23,.75);
  display:flex;align-items:center;justify-content:center;
- z-index:9999999;font-family:Inter,Segoe UI,Arial;
+ z-index:9999999;font-family:Inter,Segoe UI;
 }
 #${NS}_modal{
  width:440px;background:#fff;border-radius:14px;
  border:2px solid #2563eb;overflow:hidden;
- box-shadow:0 20px 50px rgba(0,0,0,.5);
 }
 #${NS}_header{
  padding:12px;color:#fff;
@@ -42,65 +41,54 @@ style.textContent = `
  width:100%;height:90px;padding:8px;
  border-radius:8px;border:1px solid #bfdbfe;
 }
-#${NS}_log{
- font-size:12px;margin-top:8px;
- min-height:18px;color:#1e3a8a;
-}
 #${NS}_btn{
  width:100%;margin-top:10px;padding:8px;
  border-radius:8px;border:none;
  background:linear-gradient(180deg,#2563eb,#1e3a8a);
- color:#fff;font-weight:bold;cursor:pointer;
+ color:#fff;font-weight:bold;
 }
-#${NS}_progress{
- height:6px;background:#e5e7eb;border-radius:4px;
- margin-top:8px;overflow:hidden;
-}
-#${NS}_bar{
- height:100%;width:0%;
- background:#2563eb;
- transition:width .2s;
-}
+#${NS}_log{font-size:12px;margin-top:8px;}
+#${NS}_bar{height:6px;background:#2563eb;width:0%;}
+#${NS}_progress{background:#e5e7eb;margin-top:8px;}
 `;
 document.head.appendChild(style);
 
 // ✅ SCRIPT
 const Script = {
 
-target: [],
+target: {},     // player -> [tribes]
 results: [],
-debugOnce: false,
+seen: new Set(),
 
 init(){
 
  document.getElementById(NS+"_overlay")?.remove();
 
- const overlay = document.createElement("div");
- overlay.id = NS+"_overlay";
+ const el = document.createElement("div");
+ el.id = NS+"_overlay";
 
- overlay.innerHTML = `
-  <div id="${NS}_modal">
-   <div id="${NS}_header">
-    <span>Scavenge Ranking PRO</span>
-    <button id="${NS}_close">✕</button>
-   </div>
-   <div id="${NS}_body">
-
-    <textarea id="${NS}_input"
-     placeholder="One tribe per line&#10;~G~&#10;ABC"></textarea>
-
-    <button id="${NS}_btn">START</button>
-
-    <div id="${NS}_progress"><div id="${NS}_bar"></div></div>
-    <div id="${NS}_log"></div>
-
-   </div>
+ el.innerHTML = `
+ <div id="${NS}_modal">
+  <div id="${NS}_header">Scavenge Ranking PRO
+   <button id="${NS}_close">✕</button>
   </div>
+  <div id="${NS}_body">
+
+   <textarea id="${NS}_input"
+    placeholder="One tribe per line&#10;:G:&#10;~G~"></textarea>
+
+   <button id="${NS}_btn">START</button>
+
+   <div id="${NS}_progress"><div id="${NS}_bar"></div></div>
+   <div id="${NS}_log"></div>
+
+  </div>
+ </div>
  `;
 
- document.body.appendChild(overlay);
+ document.body.appendChild(el);
 
- document.getElementById(NS+"_close").onclick = ()=>overlay.remove();
+ document.getElementById(NS+"_close").onclick = ()=>el.remove();
  document.getElementById(NS+"_btn").onclick = ()=>this.start();
 },
 
@@ -113,27 +101,24 @@ async fetchDoc(url){
  return new DOMParser().parseFromString(tx,"text/html");
 },
 
-// ✅ FIXED MEMBERS (richtiger selector)
+// ✅ MEMBERS
 async getMembers(tag){
 
  const url = `${baseUrl}?screen=ally&mode=members&tag=${tag}`;
  const doc = await this.fetchDoc(url);
 
- let arr=[];
+ let arr = [];
 
  doc.querySelectorAll("#ally_content table tr").forEach((row,i)=>{
   if(i===0) return;
 
   const link = row.querySelector("a[href*='info_player']");
   if(link){
-    const name = clean(link.textContent);
-    arr.push(name);
+    arr.push(clean(link.textContent));
   }
  });
 
- // ✅ DEBUG
- console.log("MEMBERS SAMPLE:", arr.slice(0,5));
-
+ console.log("MEMBERS:", tag, arr.slice(0,5));
  return arr;
 },
 
@@ -141,71 +126,67 @@ async start(){
 
  let input = $( "_input").value;
 
- if(!input.trim()){
-  alert("Enter tribe tags!");
-  return;
- }
-
  let tags = input
   .split(/\n|\s/)
-  .map(t=>t.replace(/[\[\]]/g,"").trim())
+  .map(t=>t.trim())
   .filter(Boolean);
 
  this.log("Loading members...");
 
  for(let t of tags){
-  let m = await this.getMembers(t);
-  this.target.push(...m);
+
+  let members = await this.getMembers(t);
+
+  for(let p of members){
+
+    if(!this.target[p]) this.target[p] = [];
+    this.target[p].push(t); // ✅ mehrere tribes speichern
+
+  }
  }
 
- this.log(`Players loaded: ${this.target.length}`);
+ console.log("TARGET SAMPLE:", this.target);
 
- console.log("TARGET SAMPLE:", this.target.slice(0,5));
-
- await this.scan();
+ this.scan();
 },
 
 async scan(){
 
  for(let i=0;i<200;i++){
 
-  this.log(`Scanning page ${i}`);
+  this.log("Scanning "+i);
   this.progress((i/200)*100);
 
-  const url = `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`;
-  const doc = await this.fetchDoc(url);
+  const doc = await this.fetchDoc(
+   `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`
+  );
 
   const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
   if(rows.length<=1) break;
 
   rows.forEach(r=>{
 
-   const td=r.querySelectorAll("td");
+   const td = r.querySelectorAll("td");
    if(td.length<5) return;
 
-   // 🔥 IMPORTANT: NAME AUS LINK holen
    const link = td[1].querySelector("a");
    if(!link) return;
 
-   const playerRaw = link.textContent;
-   const player = clean(playerRaw);
+   const playerClean = clean(link.textContent);
 
-   if(!this.debugOnce){
-    console.log("RANKING SAMPLE RAW:", playerRaw);
-    console.log("RANKING CLEAN:", player);
-    this.debugOnce = true;
-   }
+   // ✅ MATCH
+   if(!this.target[playerClean]) return;
 
-   // ✅ ROBUST MATCH (Array statt Set)
-   const match = this.target.find(t => t === player);
-   if(!match) return;
+   // ✅ DUPLICATE CHECK
+   if(this.seen.has(playerClean)) return;
+   this.seen.add(playerClean);
 
-   let ally = td[2].textContent.trim().replace(/[\[\]]/g,"");
+   const allies = this.target[playerClean].join(", ");
 
    this.results.push({
     rank: td[0].innerText,
-    player: playerRaw.trim(),   // original behalten
-    ally,
+    player: link.textContent.trim(),
+    ally: allies,
     points: td[3].innerText,
     time: td[4].innerText
    });
@@ -227,35 +208,35 @@ build(){
   parseInt(a.points.replace(/\./g,''))
  );
 
- this.log(`Found ${list.length} players`);
+ this.log("Found "+list.length+" players");
 
- let txt="[table]\n";
- txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
+ let txt = "[table]\n";
+ txt += "[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
 
  list.forEach((p,i)=>{
-  txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
+  txt += `[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
  });
 
- txt+="[/table]";
+ txt += "[/table]";
 
  this.show(txt);
 },
 
 show(txt){
 
- const div=document.createElement("div");
+ const div = document.createElement("div");
 
- div.style=`
-  position:fixed;inset:0;background:black;
-  display:flex;justify-content:center;align-items:center;
-  z-index:99999999;
+ div.style = `
+ position:fixed;inset:0;background:black;
+ display:flex;align-items:center;justify-content:center;
+ z-index:99999999;
  `;
 
- div.innerHTML=`
-  <div style="background:white;width:80%;padding:10px">
-   <textarea style="width:100%;height:400px">${txt}</textarea>
-   <button onclick="this.parentElement.parentElement.remove()">Close</button>
-  </div>
+ div.innerHTML = `
+ <div style="background:white;width:80%;padding:10px">
+  <textarea style="width:100%;height:400px">${txt}</textarea>
+  <button onclick="this.parentElement.parentElement.remove()">Close</button>
+ </div>
  `;
 
  document.body.appendChild(div);
@@ -267,7 +248,7 @@ Script.init();
 
 } catch(e){
  console.error(e);
- alert("Script Error: "+e.message);
+ alert("Error: "+e.message);
 }
 
 })();
