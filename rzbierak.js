@@ -3,11 +3,21 @@
 try {
 
 const NS = "rzb";
+const baseUrl = location.origin + "/game.php";
+
+// ✅ CLEAN FUNCTION (FIXT DEIN PROBLEM)
+const clean = (str) => {
+    return str
+        .replace(/\u00A0/g, " ")   // NBSP fix
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+};
 
 // ✅ helper
 const $ = (id) => document.getElementById(NS + id);
 
-// ✅ styles (modern blue)
+// ✅ STYLE (modern blue UI)
 const style = document.createElement("style");
 style.textContent = `
 #${NS}_overlay{
@@ -16,7 +26,7 @@ style.textContent = `
  z-index:9999999;font-family:Inter,Segoe UI,Arial;
 }
 #${NS}_modal{
- width:420px;background:#fff;border-radius:14px;
+ width:440px;background:#fff;border-radius:14px;
  border:2px solid #2563eb;overflow:hidden;
  box-shadow:0 20px 50px rgba(0,0,0,.5);
 }
@@ -27,7 +37,7 @@ style.textContent = `
 }
 #${NS}_body{padding:12px}
 #${NS}_body textarea{
- width:100%;height:80px;padding:8px;
+ width:100%;height:90px;padding:8px;
  border-radius:8px;border:1px solid #bfdbfe;
 }
 #${NS}_log{
@@ -40,18 +50,25 @@ style.textContent = `
  background:linear-gradient(180deg,#2563eb,#1e3a8a);
  color:#fff;font-weight:bold;cursor:pointer;
 }
+#${NS}_progress{
+ height:6px;background:#e5e7eb;border-radius:4px;
+ margin-top:8px;overflow:hidden;
+}
+#${NS}_bar{
+ height:100%;width:0%;
+ background:#2563eb;
+ transition:width .2s;
+}
 `;
 document.head.appendChild(style);
 
-// ✅ BASE URL fix
-const baseUrl = location.origin + "/game.php";
-
-// ✅ main
+// ✅ MAIN SCRIPT
 const Script = {
 
 target: new Set(),
 found: new Set(),
 results: [],
+debugOnce: false,
 
 init(){
 
@@ -63,7 +80,7 @@ init(){
  overlay.innerHTML = `
   <div id="${NS}_modal">
    <div id="${NS}_header">
-    <span>Scavenge Ranking</span>
+    <span>Scavenge Ranking PRO</span>
     <button id="${NS}_close">✕</button>
    </div>
    <div id="${NS}_body">
@@ -73,6 +90,7 @@ init(){
 
     <button id="${NS}_btn">START</button>
 
+    <div id="${NS}_progress"><div id="${NS}_bar"></div></div>
     <div id="${NS}_log"></div>
 
    </div>
@@ -86,6 +104,10 @@ init(){
 },
 
 log(t){ $( "_log").innerText = t; },
+
+progress(p){
+ document.getElementById(NS+"_bar").style.width = p + "%";
+},
 
 async fetchDoc(url){
  const r = await fetch(url);
@@ -103,7 +125,10 @@ async getMembers(tag){
  doc.querySelectorAll("#ally_content table tr").forEach((r,i)=>{
   if(i===0) return;
   let td=r.querySelectorAll("td");
-  if(td[1]) arr.push(td[1].textContent.trim());
+  if(td[1]){
+    const name = clean(td[1].textContent);
+    arr.push(name);
+  }
  });
 
  return arr;
@@ -118,7 +143,6 @@ async start(){
   return;
  }
 
- // ✅ LINE BASED INPUT
  let tags = input
   .split(/\n|\s/)
   .map(t=>t.replace(/[\[\]]/g,"").trim())
@@ -128,10 +152,14 @@ async start(){
 
  for(let t of tags){
   let m = await this.getMembers(t);
-  m.forEach(x=>this.target.add(x));
+  m.forEach(x => this.target.add(x));
  }
 
- this.log(`Players found: ${this.target.size}`);
+ this.log(`Players loaded: ${this.target.size}`);
+
+ // DEBUG MEMBERS
+ console.log("=== MEMBERS ===");
+ console.log([...this.target].slice(0,10));
 
  await this.scan();
 },
@@ -140,7 +168,8 @@ async scan(){
 
  for(let i=0;i<200;i++){
 
-  this.log(`Scanning ranking page ${i}`);
+  this.log(`Scanning page ${i}`);
+  this.progress((i/200)*100);
 
   const url = `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`;
   const doc = await this.fetchDoc(url);
@@ -153,10 +182,18 @@ async scan(){
    const td=r.querySelectorAll("td");
    if(td.length<5) return;
 
-   const player = td[1].textContent.trim();
-   let ally = td[2].textContent.trim().replace(/[\[\]]/g,"");
+   const player = clean(td[1].textContent);
+
+   if(!this.debugOnce){
+    console.log("=== DEBUG FIRST ROW ===");
+    console.log("RAW:", td[1].innerHTML);
+    console.log("CLEAN:", player);
+    this.debugOnce = true;
+   }
 
    if(!this.target.has(player)) return;
+
+   let ally = td[2].textContent.trim().replace(/[\[\]]/g,"");
 
    this.results.push({
     rank: td[0].innerText,
@@ -171,7 +208,7 @@ async scan(){
 
   if(this.found.size===this.target.size) break;
 
-  await new Promise(r=>setTimeout(r,80));
+  await new Promise(r=>setTimeout(r,60));
  }
 
  this.build();
@@ -179,14 +216,14 @@ async scan(){
 
 build(){
 
- // ✅ ALL IN ONE LIST
  let list = this.results;
 
- // ✅ sort best first
  list.sort((a,b)=>
   parseInt(b.points.replace(/\./g,'')) -
   parseInt(a.points.replace(/\./g,''))
  );
+
+ this.log(`Found ${list.length} players in ranking`);
 
  let txt="[table]\n";
  txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
@@ -226,7 +263,7 @@ Script.init();
 
 } catch(e){
  console.error(e);
- alert("Error: "+e.message);
+ alert("Script Error: "+e.message);
 }
 
 })();
