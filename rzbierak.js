@@ -2,204 +2,231 @@
 
 try {
 
+const NS = "rzb";
+
+// ✅ helper
+const $ = (id) => document.getElementById(NS + id);
+
+// ✅ styles (modern blue)
+const style = document.createElement("style");
+style.textContent = `
+#${NS}_overlay{
+ position:fixed;inset:0;background:rgba(2,6,23,.75);
+ display:flex;align-items:center;justify-content:center;
+ z-index:9999999;font-family:Inter,Segoe UI,Arial;
+}
+#${NS}_modal{
+ width:420px;background:#fff;border-radius:14px;
+ border:2px solid #2563eb;overflow:hidden;
+ box-shadow:0 20px 50px rgba(0,0,0,.5);
+}
+#${NS}_header{
+ padding:12px;color:#fff;
+ background:linear-gradient(180deg,#0b1f4d,#2563eb);
+ display:flex;justify-content:space-between;
+}
+#${NS}_body{padding:12px}
+#${NS}_body textarea{
+ width:100%;height:80px;padding:8px;
+ border-radius:8px;border:1px solid #bfdbfe;
+}
+#${NS}_log{
+ font-size:12px;margin-top:8px;
+ min-height:18px;color:#1e3a8a;
+}
+#${NS}_btn{
+ width:100%;margin-top:10px;padding:8px;
+ border-radius:8px;border:none;
+ background:linear-gradient(180deg,#2563eb,#1e3a8a);
+ color:#fff;font-weight:bold;cursor:pointer;
+}
+`;
+document.head.appendChild(style);
+
+// ✅ BASE URL fix
 const baseUrl = location.origin + "/game.php";
 
+// ✅ main
 const Script = {
 
-    target: new Set(),
-    found: new Set(),
-    results: [],
+target: new Set(),
+found: new Set(),
+results: [],
 
-    async init() {
-        this.createUI();
-    },
+init(){
 
-    createUI() {
+ document.getElementById(NS+"_overlay")?.remove();
 
-        // ✅ kill alte UI falls vorhanden
-        document.getElementById("rzb_overlay")?.remove();
+ const overlay = document.createElement("div");
+ overlay.id = NS+"_overlay";
 
-        const overlay = document.createElement("div");
-        overlay.id = "rzb_overlay";
+ overlay.innerHTML = `
+  <div id="${NS}_modal">
+   <div id="${NS}_header">
+    <span>Scavenge Ranking</span>
+    <button id="${NS}_close">✕</button>
+   </div>
+   <div id="${NS}_body">
 
-        overlay.style = `
-            position:fixed;
-            inset:0;
-            background:rgba(0,0,0,0.7);
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            z-index:9999999;
-        `;
+    <textarea id="${NS}_input"
+     placeholder="One tribe per line&#10;~G~&#10;ABC"></textarea>
 
-        overlay.innerHTML = `
-            <div style="background:white;padding:15px;border-radius:10px;width:420px">
-                <h3>Scavenge Ranking</h3>
+    <button id="${NS}_btn">START</button>
 
-                <textarea id="rzb_input"
-                placeholder="TAG1 TAG2"
-                style="width:100%;height:60px"></textarea>
+    <div id="${NS}_log"></div>
 
-                <br><br>
+   </div>
+  </div>
+ `;
 
-                <button id="rzb_start">Start</button>
-                <button id="rzb_close">Close</button>
+ document.body.appendChild(overlay);
 
-                <div id="rzb_log" style="margin-top:10px;font-size:12px"></div>
-            </div>
-        `;
+ document.getElementById(NS+"_close").onclick = ()=>overlay.remove();
+ document.getElementById(NS+"_btn").onclick = ()=>this.start();
+},
 
-        document.body.appendChild(overlay);
+log(t){ $( "_log").innerText = t; },
 
-        document.getElementById("rzb_start").onclick = () => this.start();
-        document.getElementById("rzb_close").onclick = () => overlay.remove();
-    },
+async fetchDoc(url){
+ const r = await fetch(url);
+ const tx = await r.text();
+ return new DOMParser().parseFromString(tx,"text/html");
+},
 
-    log(msg){
-        document.getElementById("rzb_log").innerText = msg;
-    },
+async getMembers(tag){
 
-    async fetchDoc(url){
-        const res = await fetch(url);
-        const text = await res.text();
-        return new DOMParser().parseFromString(text,"text/html");
-    },
+ const url = `${baseUrl}?screen=ally&mode=members&tag=${tag}`;
+ const doc = await this.fetchDoc(url);
 
-    async getMembers(tag){
+ let arr=[];
 
-        const url = `${baseUrl}?screen=ally&mode=members&tag=${tag}`;
-        const doc = await this.fetchDoc(url);
+ doc.querySelectorAll("#ally_content table tr").forEach((r,i)=>{
+  if(i===0) return;
+  let td=r.querySelectorAll("td");
+  if(td[1]) arr.push(td[1].textContent.trim());
+ });
 
-        let arr = [];
+ return arr;
+},
 
-        doc.querySelectorAll("#ally_content table tr").forEach((r,i)=>{
-            if(i===0) return;
-            let td = r.querySelectorAll("td");
-            if(td[1]) arr.push(td[1].innerText.trim());
-        });
+async start(){
 
-        return arr;
-    },
+ let input = $( "_input").value;
 
-    async start(){
+ if(!input.trim()){
+  alert("Enter tribe tags!");
+  return;
+ }
 
-        const input = document.getElementById("rzb_input").value.trim();
+ // ✅ LINE BASED INPUT
+ let tags = input
+  .split(/\n|\s/)
+  .map(t=>t.replace(/[\[\]]/g,"").trim())
+  .filter(Boolean);
 
-        if(!input){
-            alert("Enter tribe tags!");
-            return;
-        }
+ this.log("Loading members...");
 
-        const tags = input.split(" ");
+ for(let t of tags){
+  let m = await this.getMembers(t);
+  m.forEach(x=>this.target.add(x));
+ }
 
-        this.log("Loading members...");
+ this.log(`Players found: ${this.target.size}`);
 
-        for(const t of tags){
-            const members = await this.getMembers(t);
-            members.forEach(x => this.target.add(x));
-        }
+ await this.scan();
+},
 
-        this.log(`Players: ${this.target.size}`);
+async scan(){
 
-        await this.scan(tags);
-    },
+ for(let i=0;i<200;i++){
 
-    async scan(tags){
+  this.log(`Scanning ranking page ${i}`);
 
-        for(let i=0;i<200;i++){
+  const url = `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`;
+  const doc = await this.fetchDoc(url);
 
-            this.log(`Scanning page ${i}`);
+  const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
+  if(rows.length<=1) break;
 
-            const url = `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`;
+  rows.forEach(r=>{
 
-            const doc = await this.fetchDoc(url);
-            const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
+   const td=r.querySelectorAll("td");
+   if(td.length<5) return;
 
-            if(rows.length <= 1) break;
+   const player = td[1].textContent.trim();
+   let ally = td[2].textContent.trim().replace(/[\[\]]/g,"");
 
-            rows.forEach(r=>{
-                const td = r.querySelectorAll("td");
-                if(td.length < 5) return;
+   if(!this.target.has(player)) return;
 
-                const player = td[1].innerText.trim();
+   this.results.push({
+    rank: td[0].innerText,
+    player,
+    ally,
+    points: td[3].innerText,
+    time: td[4].innerText
+   });
 
-                if(!this.target.has(player)) return;
+   this.found.add(player);
+  });
 
-                this.results.push({
-                    rank: td[0].innerText,
-                    player: player,
-                    ally: td[2].innerText.trim(),
-                    points: td[3].innerText,
-                    time: td[4].innerText
-                });
+  if(this.found.size===this.target.size) break;
 
-                this.found.add(player);
-            });
+  await new Promise(r=>setTimeout(r,80));
+ }
 
-            if(this.found.size === this.target.size)
-                break;
+ this.build();
+},
 
-            await new Promise(r => setTimeout(r, 80));
-        }
+build(){
 
-        this.output(tags);
-    },
+ // ✅ ALL IN ONE LIST
+ let list = this.results;
 
-    output(tags){
+ // ✅ sort best first
+ list.sort((a,b)=>
+  parseInt(b.points.replace(/\./g,'')) -
+  parseInt(a.points.replace(/\./g,''))
+ );
 
-        let txt = "";
+ let txt="[table]\n";
+ txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
 
-        tags.forEach(tag=>{
+ list.forEach((p,i)=>{
+  txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
+ });
 
-            const list = this.results.filter(x=>x.ally === tag);
+ txt+="[/table]";
 
-            txt += `[spoiler=${tag}]\n`;
-            txt += `[table]\n`;
-            txt += `[**]LP[||]Rank[||]Player[||]Points[||]Time[/**]\n`;
+ this.show(txt);
+},
 
-            list.forEach((p,i)=>{
-                txt += `[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][b]${p.points}[/b][|]${p.time}\n`;
-            });
+show(txt){
 
-            txt += `[/table]\n[/spoiler]\n\n`;
-        });
+ const div=document.createElement("div");
 
-        this.show(txt);
-    },
+ div.style=`
+  position:fixed;inset:0;background:black;
+  display:flex;justify-content:center;align-items:center;
+  z-index:99999999;
+ `;
 
-    show(text){
+ div.innerHTML=`
+  <div style="background:white;width:80%;padding:10px">
+   <textarea style="width:100%;height:400px">${txt}</textarea>
+   <button onclick="this.parentElement.parentElement.remove()">Close</button>
+  </div>
+ `;
 
-        const out = document.createElement("div");
+ document.body.appendChild(div);
+}
 
-        out.style = `
-            position:fixed;
-            inset:0;
-            background:black;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-            z-index:99999999;
-        `;
-
-        out.innerHTML = `
-            <div style="background:white;padding:10px;width:80%">
-                <textarea style="width:100%;height:350px">${text}</textarea>
-                <button onclick="this.parentElement.parentElement.remove()">Close</button>
-            </div>
-        `;
-
-        document.body.appendChild(out);
-    }
 };
 
-// ✅ WICHTIG: direkt starten
-await Script.init();
+Script.init();
 
-} catch(e) {
-
-console.error(e);
-alert("Script crashed: " + e.message);
-
+} catch(e){
+ console.error(e);
+ alert("Error: "+e.message);
 }
 
 })();
