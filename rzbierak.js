@@ -5,10 +5,12 @@ try {
 const NS = "rzb";
 const baseUrl = location.origin + "/game.php";
 
-// ✅ CLEAN FUNCTION (FIX for NBSP + weird chars)
+// ✅ ULTRA CLEAN (Unicode + NBSP + alles)
 const clean = (str) => {
     return str
-        .replace(/\u00A0/g, " ")
+        .normalize("NFKD")                     // unicode normalize
+        .replace(/[\u0300-\u036f]/g, "")       // remove accents
+        .replace(/\u00A0/g, " ")               // NBSP
         .replace(/\s+/g, " ")
         .trim()
         .toLowerCase();
@@ -17,7 +19,7 @@ const clean = (str) => {
 // ✅ helper
 const $ = (id) => document.getElementById(NS + id);
 
-// ✅ MODERN BLUE UI
+// ✅ STYLE (blue UI)
 const style = document.createElement("style");
 style.textContent = `
 #${NS}_overlay{
@@ -62,14 +64,12 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// ✅ MAIN
+// ✅ SCRIPT
 const Script = {
 
-target: new Set(),
-found: new Set(),
+target: [],
 results: [],
 debugOnce: false,
-memberDebug: false,
 
 init(){
 
@@ -105,10 +105,7 @@ init(){
 },
 
 log(t){ $( "_log").innerText = t; },
-
-progress(p){
- document.getElementById(NS+"_bar").style.width = p + "%";
-},
+progress(p){ document.getElementById(NS+"_bar").style.width = p+"%"; },
 
 async fetchDoc(url){
  const r = await fetch(url);
@@ -116,7 +113,7 @@ async fetchDoc(url){
  return new DOMParser().parseFromString(tx,"text/html");
 },
 
-// ✅ ✅ FIXED MEMBER PARSER
+// ✅ FIXED MEMBERS (richtiger selector)
 async getMembers(tag){
 
  const url = `${baseUrl}?screen=ally&mode=members&tag=${tag}`;
@@ -125,24 +122,17 @@ async getMembers(tag){
  let arr=[];
 
  doc.querySelectorAll("#ally_content table tr").forEach((row,i)=>{
-
   if(i===0) return;
 
   const link = row.querySelector("a[href*='info_player']");
-
   if(link){
     const name = clean(link.textContent);
     arr.push(name);
   }
-
  });
 
- // ✅ DEBUG MEMBERS
- if(!this.memberDebug){
-    console.log("=== MEMBERS DEBUG ===");
-    console.log(arr.slice(0,10));
-    this.memberDebug = true;
- }
+ // ✅ DEBUG
+ console.log("MEMBERS SAMPLE:", arr.slice(0,5));
 
  return arr;
 },
@@ -165,13 +155,12 @@ async start(){
 
  for(let t of tags){
   let m = await this.getMembers(t);
-  m.forEach(x => this.target.add(x));
+  this.target.push(...m);
  }
 
- this.log(`Players loaded: ${this.target.size}`);
+ this.log(`Players loaded: ${this.target.length}`);
 
- console.log("=== TARGET SET ===");
- console.log([...this.target].slice(0,10));
+ console.log("TARGET SAMPLE:", this.target.slice(0,5));
 
  await this.scan();
 },
@@ -194,32 +183,34 @@ async scan(){
    const td=r.querySelectorAll("td");
    if(td.length<5) return;
 
-   const player = clean(td[1].textContent);
+   // 🔥 IMPORTANT: NAME AUS LINK holen
+   const link = td[1].querySelector("a");
+   if(!link) return;
 
-   // ✅ DEBUG FIRST ROW
+   const playerRaw = link.textContent;
+   const player = clean(playerRaw);
+
    if(!this.debugOnce){
-    console.log("=== DEBUG RANKING ROW ===");
-    console.log("RAW:", td[1].innerHTML);
-    console.log("CLEAN:", player);
+    console.log("RANKING SAMPLE RAW:", playerRaw);
+    console.log("RANKING CLEAN:", player);
     this.debugOnce = true;
    }
 
-   if(!this.target.has(player)) return;
+   // ✅ ROBUST MATCH (Array statt Set)
+   const match = this.target.find(t => t === player);
+   if(!match) return;
 
    let ally = td[2].textContent.trim().replace(/[\[\]]/g,"");
 
    this.results.push({
     rank: td[0].innerText,
-    player,
+    player: playerRaw.trim(),   // original behalten
     ally,
     points: td[3].innerText,
     time: td[4].innerText
    });
 
-   this.found.add(player);
   });
-
-  if(this.found.size===this.target.size) break;
 
   await new Promise(r=>setTimeout(r,60));
  }
@@ -236,7 +227,7 @@ build(){
   parseInt(a.points.replace(/\./g,''))
  );
 
- this.log(`Found ${list.length} players in ranking`);
+ this.log(`Found ${list.length} players`);
 
  let txt="[table]\n";
  txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
