@@ -1,158 +1,207 @@
-javascript:(function () {
+(async function () {
 
-var currentUrl = window.location.href;
-var yourVillage = currentUrl.substring(currentUrl.indexOf("village=")+8, currentUrl.indexOf("&"));
-var world = currentUrl.substring(currentUrl.indexOf("://")+3, currentUrl.indexOf("."));
-var baseUrl = "https://" + world + ".plemiona.pl";
+const namespace = "ScavengeRanking";
 
-var pressed = false;
+const Helper = {
+    id: (name) => `${namespace}_${name}`,
+    el: (name) => document.getElementById(Helper.id(name))
+};
 
-function httpGet(url) {
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, false);
-    xhr.send(null);
-    return xhr.responseText;
-}
+const Script = {
 
-// 📦 Datenklasse
-class ScavengeInfo {
-    constructor(ranking, player, ally, points, time) {
-        this.ranking = ranking;
-        this.player = player;
-        this.ally = ally;
-        this.points = points;
-        this.time = time;
-    }
-}
+    playersTarget: new Set(),
+    foundPlayers: new Set(),
+    results: [],
 
-// 🧍 Mitglieder holen
-function getAllyMembers(tag) {
-    let url = `${baseUrl}/game.php?screen=ally&mode=members&tag=${tag}`;
-    let html = httpGet(url);
-    let doc = new DOMParser().parseFromString(html, "text/html");
+    async init() {
+        this.createUI();
+    },
 
-    let members = [];
-    let rows = doc.querySelectorAll("#ally_content table tr");
+    createUI() {
 
-    rows.forEach((row, i) => {
-        if (i === 0) return;
-        let cols = row.getElementsByTagName("td");
-        if (cols.length > 1) {
-            members.push(cols[1].innerText.trim());
+        const overlay = document.createElement("div");
+        overlay.id = Helper.id("overlay");
+
+        overlay.style = `
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.6);
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            z-index:999999;
+        `;
+
+        overlay.innerHTML = `
+            <div style="background:white;padding:15px;border-radius:12px;max-width:500px;width:100%">
+                <h2>Scavenge Ranking</h2>
+
+                <textarea id="${Helper.id("input")}" 
+                    placeholder="TAG1 TAG2 TAG3"
+                    style="width:100%;height:60px"></textarea>
+
+                <br><br>
+
+                <button id="${Helper.id("start")}">Start</button>
+                <div id="${Helper.id("progress")}" style="margin-top:10px;font-size:13px"></div>
+
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        Helper.el("start").addEventListener("click", () => this.start());
+    },
+
+    log(text){
+        Helper.el("progress").innerText = text;
+    },
+
+    async fetchDoc(url){
+        const res = await fetch(url);
+        const text = await res.text();
+        return new DOMParser().parseFromString(text, "text/html");
+    },
+
+    async getAllyMembers(tag){
+
+        const url = game_data.link_base_pure + `ally&mode=members&tag=${tag}`;
+        const doc = await this.fetchDoc(url);
+
+        let members = [];
+
+        doc.querySelectorAll("#ally_content table tr").forEach((row,i)=>{
+            if(i === 0) return;
+            const tds = row.querySelectorAll("td");
+            if(tds[1]){
+                members.push(tds[1].innerText.trim());
+            }
+        });
+
+        return members;
+    },
+
+    async start(){
+
+        const input = Helper.el("input").value.trim();
+        if(!input){
+            alert("Podaj tagi plemion");
+            return;
         }
-    });
 
-    return members;
-}
+        const tags = input.split(" ");
 
-// 🧠 Hauptlogik
-function startScript() {
+        this.log("Pobieranie członków...");
 
-    if (pressed) return;
+        for(const tag of tags){
+            const members = await this.getAllyMembers(tag);
+            members.forEach(m => this.playersTarget.add(m));
+        }
 
-    let allyInput = document.getElementById("ScriptAlly").value.trim();
-    if (!allyInput) {
-        alert("Bitte Stammeskürzel eingeben!");
-        return;
-    }
+        this.log(`Znaleziono graczy: ${this.playersTarget.size}`);
 
-    let allyTags = allyInput.split(" ");
+        await this.scanRanking(tags);
+    },
 
-    pressed = true;
+    async scanRanking(tags){
 
-    // 👉 alle Spieler sammeln
-    let targetPlayers = new Set();
+        for(let i=0;i<300;i++){
 
-    allyTags.forEach(tag => {
-        let members = getAllyMembers(tag);
-        members.forEach(m => targetPlayers.add(m));
-    });
+            this.log(`Skanowanie rankingu... ${(i+1)*25}`);
 
-    // 👉 Ranking scannen (kein fixes Limit)
-    let results = [];
-    let foundPlayers = new Set();
+            const url = game_data.link_base_pure +
+                `ranking&mode=in_a_day&type=scavenge&offset=${i*25}`;
 
-    for (let i = 0; i < 200; i++) {
+            const doc = await this.fetchDoc(url);
 
-        let url = `${baseUrl}/game.php?village=${yourVillage}&screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`;
-        let html = httpGet(url);
-        let doc = new DOMParser().parseFromString(html, "text/html");
+            const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
 
-        let rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
+            if(rows.length <= 1) break;
 
-        if (rows.length <= 1) break;
+            rows.forEach(row => {
 
-        rows.forEach(row => {
+                const cols = row.querySelectorAll("td");
+                if(cols.length < 5) return;
 
-            let cols = row.getElementsByTagName("td");
-            if (cols.length < 5) return;
+                const player = cols[1]?.innerText.trim();
+                const ally = cols[2]?.innerText.trim();
 
-            let playerEl = cols[1].querySelector("a");
-            if (!playerEl) return;
+                if(!this.playersTarget.has(player)) return;
 
-            let player = playerEl.innerText.trim();
+                this.results.push({
+                    ranking: cols[0].innerText,
+                    player,
+                    ally,
+                    points: cols[3].innerText,
+                    time: cols[4].innerText
+                });
 
-            if (!targetPlayers.has(player)) return;
+                this.foundPlayers.add(player);
+            });
 
-            let allyEl = cols[2].querySelector("a");
-            if (!allyEl) return;
+            // ✅ early stop
+            if(this.foundPlayers.size === this.playersTarget.size){
+                break;
+            }
 
-            let ally = allyEl.innerText.trim();
-            let ranking = cols[0].innerText.trim();
-            let points = cols[3].innerText.replace(/\./g,"");
-            let time = cols[4].innerText.trim();
+            await this.sleep(80);
+        }
 
-            results.push(new ScavengeInfo(ranking, player, ally, points, time));
-            foundPlayers.add(player);
+        this.generateOutput(tags);
+    },
+
+    sleep(ms){
+        return new Promise(r => setTimeout(r, ms));
+    },
+
+    generateOutput(tags){
+
+        let output = "";
+
+        tags.forEach(tag=>{
+
+            const list = this.results.filter(x=> x.ally === tag);
+
+            output += `[spoiler=${tag}]\n`;
+            output += `[table]\n`;
+            output += `[**]LP[||]Rank[||]Gracz[||]Punkty[||]Czas[/**]\n`;
+
+            list.forEach((p,i)=>{
+                output += `[*][b]${i+1}[/b][|]${p.ranking}[|][player]${p.player}[/player][|][b]${p.points}[/b][|]${p.time}\n`;
+            });
+
+            output += `[/table]\n[/spoiler]\n\n`;
         });
 
-        // ✅ STOP wenn alle gefunden
-        if (foundPlayers.size === targetPlayers.size) break;
+        this.showOutput(output);
+    },
+
+    showOutput(text){
+
+        const overlay = document.createElement("div");
+
+        overlay.style = `
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.7);
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            z-index:9999999;
+        `;
+
+        overlay.innerHTML = `
+            <div style="background:white;padding:15px;border-radius:10px;width:80%;max-width:900px">
+                <h2>BBCode</h2>
+                <textarea style="width:100%;height:400px">${text}</textarea>
+                <button onclick="this.parentElement.parentElement.remove()">Zamknij</button>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
     }
+};
 
-    renderOutput(results, allyTags);
-}
-
-// 📊 Ausgabe
-function renderOutput(results, allyTags) {
-
-    let now = new Date();
-    let text = `Ranking (${now.toLocaleDateString()})\n\n`;
-
-    allyTags.forEach(tag => {
-
-        let filtered = results.filter(r => r.ally === tag);
-
-        text += `[spoiler=${tag}]\n`;
-        text += `[table]\n`;
-        text += `[**]LP[||]Rank[||]Spieler[||]Punkte[||]Zeit[/**]\n`;
-
-        filtered.forEach((p, i) => {
-            text += `[*][b]${i+1}[/b][|]${p.ranking}[|][player]${p.player}[/player][|][b]${p.points}[/b][|]${p.time}\n`;
-        });
-
-        text += `[/table]\n[/spoiler]\n\n`;
-    });
-
-    let ta = document.createElement("textarea");
-    ta.style.width = "600px";
-    ta.style.height = "300px";
-    ta.value = text;
-
-    document.getElementById("dudialog").appendChild(document.createElement("br"));
-    document.getElementById("dudialog").appendChild(ta);
-}
-
-// 💬 UI Popup
-Dialog.show("Scavenge Script",
-    `<div id="dudialog">
-        <b>Stämme eingeben (mit Leerzeichen):</b><br>
-        <textarea id="ScriptAlly" style="width:95%;height:60px;"></textarea><br><br>
-        <button onclick="startScript()">Start</button>
-    </div>`
-);
-
-// global machen
-window.startScript = startScript;
+await Script.init();
 
 })();
