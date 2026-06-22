@@ -5,55 +5,29 @@ try {
 const NS = "rzb";
 const baseUrl = location.origin + "/game.php";
 
-// ✅ helper
 const $ = id => document.getElementById(NS + id);
 
-// ✅ clean
-const cleanPlayer = str =>
- str.replace(/\u00A0/g," ")
-    .replace(/\s+/g," ")
-    .trim();
+// ✅ helpers
+const cleanPlayer = str => str.replace(/\u00A0/g," ").trim();
+const normTribe = str => str.replace(/\s/g,"").trim();
 
-const normTribe = str =>
- str.replace(/\s/g,"").trim();
+let sortKey = "points";
+let sortDir = "desc";
 
-// ✅ DEBUG (nur MATCH behalten)
-const logMatch = (...args) => console.log("✅ MATCH:", ...args);
-
-// ✅ UI (wieder hübsch 😄)
+// ✅ UI
 const style = document.createElement("style");
 style.textContent = `
-#${NS}_overlay{
- position:fixed;inset:0;background:rgba(2,6,23,.75);
- display:flex;align-items:center;justify-content:center;
- z-index:9999999;font-family:Inter,Segoe UI;
-}
-#${NS}_modal{
- width:420px;background:#fff;border-radius:12px;
- border:2px solid #2563eb;overflow:hidden;
-}
-#${NS}_header{
- padding:10px;color:#fff;
- background:linear-gradient(180deg,#0b1f4d,#2563eb);
- display:flex;justify-content:space-between;
-}
+#${NS}_overlay{position:fixed;inset:0;background:rgba(2,6,23,.75);display:flex;align-items:center;justify-content:center;z-index:999999;}
+#${NS}_modal{width:420px;background:white;border-radius:12px;border:2px solid #2563eb;}
+#${NS}_header{background:linear-gradient(#0b1f4d,#2563eb);color:white;padding:10px;}
 #${NS}_body{padding:10px}
-#${NS}_body textarea{
- width:100%;height:80px;padding:6px;
- border-radius:6px;border:1px solid #bfdbfe;
-}
-#${NS}_btn{
- width:100%;margin-top:8px;padding:8px;
- border-radius:6px;border:none;
- background:#2563eb;color:#fff;font-weight:bold;
-}
-#${NS}_progress{height:6px;background:#eee;margin-top:6px}
-#${NS}_bar{height:100%;width:0;background:#2563eb}
-#${NS}_log{font-size:12px;margin-top:5px}
+textarea{width:100%;height:80px}
+button{width:100%;margin-top:6px;padding:6px}
+#${NS}_bar{height:6px;background:#2563eb;width:0}
+#${NS}_progress{background:#eee;margin-top:6px}
 `;
 document.head.appendChild(style);
 
-// ✅ SCRIPT
 const Script = {
 
 results: [],
@@ -63,47 +37,38 @@ found: 0,
 
 init(){
 
- document.getElementById(NS+"_overlay")?.remove();
-
- const el = document.createElement("div");
- el.id = NS+"_overlay";
-
- el.innerHTML = `
+ document.body.insertAdjacentHTML("beforeend",`
+ <div id="${NS}_overlay">
  <div id="${NS}_modal">
-  <div id="${NS}_header">
-    Scavenge PRO
-    <button id="${NS}_close">✕</button>
-  </div>
+  <div id="${NS}_header">Scavenge PRO</div>
   <div id="${NS}_body">
 
    <textarea id="${NS}_input" placeholder=":G:\n~G~"></textarea>
 
-   <button id="${NS}_btn">START</button>
+   <input id="${NS}_top" placeholder="Top X (optional)" style="width:100%;margin-top:4px"/>
+   <input id="${NS}_min" placeholder="Min Points (optional)" style="width:100%;margin-top:4px"/>
+
+   <button id="${NS}_start">START</button>
 
    <div id="${NS}_progress"><div id="${NS}_bar"></div></div>
    <div id="${NS}_log"></div>
 
   </div>
- </div>`;
+ </div>
+ </div>`);
 
- document.body.appendChild(el);
-
- document.getElementById(NS+"_close").onclick = ()=>el.remove();
- document.getElementById(NS+"_btn").onclick = ()=>this.start();
+ document.getElementById(NS+"_start").onclick = ()=>this.start();
 },
 
-log(t){ $( "_log").innerText = t },
-prog(p){ $( "_bar").style.width = p+"%" },
+log(t){ document.getElementById(NS+"_log").innerText = t },
+prog(p){ document.getElementById(NS+"_bar").style.width = p+"%" },
 
 async fetchDoc(url){
-
  const r = await fetch(url);
-
- if(r.status === 429){
-   await new Promise(r=>setTimeout(r,1500));
-   return this.fetchDoc(url);
+ if(r.status===429){
+  await new Promise(r=>setTimeout(r,1500));
+  return this.fetchDoc(url);
  }
-
  return new DOMParser().parseFromString(await r.text(),"text/html");
 },
 
@@ -115,10 +80,8 @@ async start(){
 
  this.targets = $( "_input").value
   .split(/\n|\s/)
-  .map(x=>normTribe(x))
+  .map(normTribe)
   .filter(Boolean);
-
- this.log("Scanning...");
 
  await this.scan();
 },
@@ -128,83 +91,159 @@ async scan(){
  for(let i=0;i<200;i++){
 
   const doc = await this.fetchDoc(
-    `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`
+   `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`
   );
 
   const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
-  if(rows.length <= 1) break;
 
   rows.forEach(r=>{
 
-    const td = r.querySelectorAll("td");
-    if(td.length < 5) return;
+   const td = r.querySelectorAll("td");
+   if(td.length<5) return;
 
-    const player = cleanPlayer(td[1].textContent);
-    const tribeRaw = td[2].textContent.trim();
-    const tribe = normTribe(tribeRaw);
+   const player = cleanPlayer(td[1].textContent);
+   const tribeRaw = td[2].textContent.trim();
+   const tribe = normTribe(tribeRaw);
 
-    if(!this.targets.some(t => tribe.includes(t))) return;
+   if(!this.targets.some(t=>tribe.includes(t))) return;
 
-    if(this.seen.has(player)) return;
-    this.seen.add(player);
+   if(this.seen.has(player)) return;
+   this.seen.add(player);
 
-    logMatch(player, "→", tribeRaw); // ✅ EINZIGER DEBUG
+   console.log("✅ MATCH:", player, "→", tribeRaw);
 
-    this.found++;
-
-    this.results.push({
-      rank: td[0].innerText,
-      player,
-      ally: tribeRaw,
-      points: td[3].innerText,
-      time: td[4].innerText
-    });
+   this.results.push({
+    rank: parseInt(td[0].innerText),
+    player,
+    ally: tribeRaw,
+    points: parseInt(td[3].innerText.replace(/\./g,'')),
+    time: td[4].innerText
+   });
 
   });
 
-  this.log(`Found: ${this.found}`);
   this.prog((i/200)*100);
+  this.log(`Found: ${this.results.length}`);
 
   await new Promise(r=>setTimeout(r,300));
  }
 
- this.build();
+ this.buildUI();
 },
 
-build(){
+// ✅ SORT
+sortData(){
 
- this.results.sort((a,b)=>
-  parseInt(b.points.replace(/\./g,'')) -
-  parseInt(a.points.replace(/\./g,''))
- );
+ this.results.sort((a,b)=>{
 
- let txt = "[table]\n";
- txt += "[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
+  let A = a[sortKey];
+  let B = b[sortKey];
+
+  if(sortKey==="player"||sortKey==="ally"||sortKey==="time"){
+    return sortDir==="asc"
+      ? A.localeCompare(B)
+      : B.localeCompare(A);
+  }
+
+  return sortDir==="asc" ? A-B : B-A;
+ });
+},
+
+buildUI(){
+
+ const top = parseInt($( "_top").value) || null;
+ const min = parseInt($( "_min").value.replace(/\./g,'')) || 0;
+
+ this.results = this.results.filter(x => x.points >= min);
+
+ this.sortData();
+
+ if(top) this.results = this.results.slice(0, top);
+
+ this.render();
+},
+
+render(){
+
+ let html = `
+<div id="${NS}_result" style="
+ position:fixed;inset:0;background:rgba(0,0,0,.8);
+ display:flex;justify-content:center;align-items:center;
+ z-index:9999999;
+">
+ <div style="
+  width:80%;background:white;border-radius:10px;overflow:hidden;
+ ">
+
+ <div style="background:#2563eb;color:white;padding:10px;">
+  Results
+ </div>
+
+ <div style="padding:10px">
+
+ <div style="display:flex;gap:5px;margin-bottom:5px">
+  <button onclick="(${setSort.toString()})('rank')">Rank</button>
+  <button onclick="(${setSort.toString()})('player')">Player</button>
+  <button onclick="(${setSort.toString()})('ally')">Ally</button>
+  <button onclick="(${setSort.toString()})('points')">Points</button>
+  <button onclick="(${setSort.toString()})('time')">Time</button>
+ </div>
+
+ <textarea id="${NS}_out" style="width:100%;height:300px"></textarea>
+
+ <div style="display:flex;gap:5px;margin-top:5px">
+  <button onclick="navigator.clipboard.writeText(document.getElementById('${NS}_out').value)">Copy</button>
+  <button onclick="download()">Download</button>
+  <button onclick="document.getElementById('${NS}_result').remove()">Close</button>
+ </div>
+
+ </div>
+ </div>
+</div>
+`;
+
+ document.body.insertAdjacentHTML("beforeend", html);
+
+ this.updateText();
+},
+
+updateText(){
+
+ let txt="[table]\n";
+ txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
 
  this.results.forEach((p,i)=>{
-  txt += `[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
+  txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
  });
 
- txt += "[/table]";
+ txt+="[/table]";
 
- this.show(txt);
-},
-
-show(txt){
-
- const d=document.createElement("div");
-
- d.style="position:fixed;inset:0;background:black;display:flex;justify-content:center;align-items:center;z-index:999999";
-
- d.innerHTML=`
- <div style="background:white;width:80%;padding:10px">
-   <textarea style="width:100%;height:400px">${txt}</textarea>
- </div>`;
-
- document.body.appendChild(d);
+ document.getElementById(NS+"_out").value = txt;
 }
 
 };
+
+// ✅ sorting handler
+function setSort(key){
+
+ sortDir = (sortKey === key && sortDir==="desc") ? "asc" : "desc";
+ sortKey = key;
+
+ Script.sortData();
+ Script.updateText();
+}
+
+// ✅ download
+function download(){
+
+ const txt = document.getElementById(NS+"_out").value;
+ const blob = new Blob([txt],{type:"text/plain"});
+ const a = document.createElement("a");
+
+ a.href = URL.createObjectURL(blob);
+ a.download = "ranking.txt";
+ a.click();
+}
 
 Script.init();
 
