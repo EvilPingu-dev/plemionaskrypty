@@ -7,7 +7,6 @@ const baseUrl = location.origin + "/game.php";
 
 const $ = id => document.getElementById(NS + id);
 
-// ✅ CLEAN
 const cleanPlayer = str => str.replace(/\u00A0/g," ").trim();
 const normTribe = str => str.replace(/\s/g,"").trim();
 
@@ -19,7 +18,6 @@ targets: [],
 sortKey: "points",
 sortDir: "desc",
 
-// ✅ 💙 CLEAN BLUE UI (SAFE)
 init(){
 
  document.getElementById(NS+"_overlay")?.remove();
@@ -28,98 +26,137 @@ init(){
  el.id = NS+"_overlay";
 
  el.innerHTML = `
- <div style="position:fixed;inset:0;background:rgba(2,6,23,.75);display:flex;align-items:center;justify-content:center;z-index:999999">
-  <div style="width:420px;background:white;border-radius:12px;border:2px solid #2563eb;overflow:hidden">
+ <div style="
+  position:fixed;inset:0;
+  background:rgba(2,6,23,.75);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:999999;
+ ">
 
-   <div style="background:linear-gradient(#0b1f4d,#2563eb);color:white;padding:10px;display:flex;justify-content:space-between">
+  <div style="
+   width:420px;
+   background:white;
+   border-radius:12px;
+   border:2px solid #2563eb;
+   overflow:hidden;
+   box-shadow:0 20px 60px rgba(0,0,0,.4);
+  ">
+
+   <!-- HEADER -->
+   <div style="
+    background:linear-gradient(180deg,#0b1f4d,#2563eb);
+    color:white;
+    padding:10px;
+    font-weight:bold;
+    display:flex;
+    justify-content:space-between;
+   ">
     Scavenge PRO
-    <button id="${NS}_close_start" style="background:none;border:none;color:white;font-size:16px">✕</button>
+    <button id="${NS}_close_start" style="
+     background:none;border:none;color:white;
+     font-size:16px;cursor:pointer;
+    ">✕</button>
    </div>
 
-   <div style="padding:10px">
+   <!-- BODY -->
+   <div style="padding:12px">
 
-    <textarea id="${NS}_input" placeholder=":G:\n~G~"
-      style="width:100%;height:80px;border-radius:6px;border:1px solid #ccc;padding:6px"></textarea>
+    <label style="font-size:13px;">Tribes</label>
+    <textarea id="${NS}_input" placeholder=":G:\n~G~" style="
+     margin-top:4px;
+     width:100%;
+     height:80px;
+     border-radius:8px;
+     border:1px solid #bfdbfe;
+     padding:6px;
+    "></textarea>
 
-    <div style="display:flex;gap:6px;margin-top:6px">
-      <input id="${NS}_top" placeholder="Top X" style="flex:1;padding:6px">
-      <input id="${NS}_min" placeholder="Min Points" style="flex:1;padding:6px">
+    <div style="display:flex;gap:6px;margin-top:8px">
+     <input id="${NS}_top" placeholder="Top X" style="
+      flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;
+     ">
+     <input id="${NS}_min" placeholder="Min Points" style="
+      flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;
+     ">
     </div>
 
     <button id="${NS}_start" style="
-      margin-top:8px;width:100%;padding:8px;
-      background:#2563eb;color:white;border:none;border-radius:6px;font-weight:bold">
-      START
-    </button>
+     margin-top:10px;
+     width:100%;
+     padding:8px;
+     border:none;
+     border-radius:8px;
+     background:linear-gradient(180deg,#2563eb,#1e3a8a);
+     color:white;
+     font-weight:bold;
+     cursor:pointer;
+    ">START</button>
 
-    <div style="background:#eee;margin-top:8px">
-      <div id="${NS}_bar" style="height:6px;background:#2563eb;width:0"></div>
+    <div style="
+     background:#eee;
+     margin-top:10px;
+     border-radius:4px;
+    ">
+     <div id="${NS}_bar" style="
+      height:6px;
+      background:#2563eb;
+      width:0%;
+      border-radius:4px;
+     "></div>
     </div>
 
-    <div id="${NS}_log" style="font-size:12px;margin-top:6px"></div>
+    <div id="${NS}_log" style="
+     margin-top:6px;
+     font-size:12px;
+     color:#333;
+    "></div>
 
    </div>
+
   </div>
- </div>`;
+ </div>
+ `;
 
  document.body.appendChild(el);
 
- $( "_start").onclick = ()=>this.start();
+ // ✅ EVENTS
+ document.getElementById(NS+"_start").onclick = ()=>this.start();
  document.getElementById(NS+"_close_start").onclick = ()=>el.remove();
-},
+}
 
-log(t){ $( "_log").innerText = t },
-prog(p){ $( "_bar").style.width = p+"%" },
+log(t){ $("_log").innerText = t },
+prog(p){ $("_bar").style.width = p+"%" },
 
 async fetchDoc(url){
  const r = await fetch(url);
- if(r.status === 429){
-  await new Promise(r=>setTimeout(r,1500));
-  return this.fetchDoc(url);
- }
+ if(r.status===429){ await new Promise(r=>setTimeout(r,1500)); return this.fetchDoc(url);} 
  return new DOMParser().parseFromString(await r.text(),"text/html");
 },
 
 async start(){
-
- this.results = [];
- this.seen = new Set();
-
- this.targets = $( "_input").value
-  .split(/\n|\s/)
-  .map(normTribe)
-  .filter(Boolean);
-
+ this.results=[];
+ this.seen=new Set();
+ this.targets = $("_input").value.split(/\n|\s/).map(normTribe).filter(Boolean);
  await this.scan();
  document.getElementById(NS+"_overlay").remove();
 },
 
 async scan(){
-
  for(let i=0;i<200;i++){
-
-  const doc = await this.fetchDoc(
-   `${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`
-  );
-
+  const doc = await this.fetchDoc(`${baseUrl}?screen=ranking&mode=in_a_day&type=scavenge&offset=${i*25}`);
   const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
-
   rows.forEach(r=>{
-
    const td = r.querySelectorAll("td");
-   if(td.length < 5) return;
-
+   if(td.length<5) return;
    const player = cleanPlayer(td[1].textContent);
    const tribeRaw = td[2].textContent.trim();
    const tribe = normTribe(tribeRaw);
-
    if(!this.targets.some(t=>tribe.includes(t))) return;
    if(this.seen.has(player)) return;
-
    this.seen.add(player);
-
    console.log("✅ MATCH:", player, "→", tribeRaw);
-
    this.results.push({
     rank: parseInt(td[0].innerText),
     player,
@@ -127,138 +164,104 @@ async scan(){
     points: parseInt(td[3].innerText.replace(/\./g,'')),
     time: td[4].innerText
    });
-
   });
-
   this.prog((i/200)*100);
-  this.log("Found: " + this.results.length);
-
+  this.log(`Found: ${this.results.length}`);
   await new Promise(r=>setTimeout(r,250));
  }
-
  this.buildUI();
 },
 
 sort(){
-
  this.results.sort((a,b)=>{
-  const A = a[this.sortKey];
-  const B = b[this.sortKey];
-
-  if(typeof A === "string"){
-    return this.sortDir==="asc" ? A.localeCompare(B) : B.localeCompare(A);
-  }
-
-  return this.sortDir==="asc" ? A-B : B-A;
+  let A=a[this.sortKey], B=b[this.sortKey];
+  if(typeof A==="string") return this.sortDir==="asc"?A.localeCompare(B):B.localeCompare(A);
+  return this.sortDir==="asc"?A-B:B-A;
  });
 },
 
-// ✅ 💙 RESULT TABLE (BLUE + CLEAN)
 buildUI(){
-
- let data = [...this.results];
-
+ let data=[...this.results];
+ const top=parseInt($("_top")?.value)||null;
+ const min=parseInt($("_min")?.value)||0;
+ data=data.filter(x=>x.points>=min);
  this.sort();
+ if(top) data=data.slice(0,top);
 
- const top = parseInt($( "_top")?.value)||null;
- const min = parseInt($( "_min")?.value)||0;
+ const palette=["#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#0ea5e9"];
+ let colorMap={}, idx=0;
+ const getColor=a=>{ if(!colorMap[a]){colorMap[a]=palette[idx%palette.length];idx++;} return colorMap[a]; };
 
- data = data.filter(x=>x.points >= min);
- if(top) data = data.slice(0,top);
-
- const colors = ["#2563eb","#16a34a","#dc2626","#d97706"];
- let map = {}, idx=0;
-
- const getColor=a=>{
-  if(!map[a]){
-   map[a]=colors[idx%colors.length];
-   idx++;
-  }
-  return map[a];
- };
-
- let rows = data.map((p,i)=>{
-
-  const c = getColor(p.ally);
-
+ let rows=data.map((p,i)=>{
+  const color=getColor(p.ally);
   return `
-   <tr style="background:${c}20">
+   <tr style="background:${color}20">
     <td>${i+1}</td>
     <td>${p.rank}</td>
-    <td>
-      <a href="${baseUrl}?screen=info_player&name=${encodeURIComponent(p.player)}"
-         target="_blank"
-         style="color:${c};font-weight:bold;text-decoration:none">
-        ${p.player}
-      </a>
-    </td>
-    <td style="color:${c};font-weight:bold">${p.ally}</td>
-    <td>${p.points}</td>
+    <td><a href="${baseUrl}?screen=info_player&name=${encodeURIComponent(p.player)}" target="_blank" style="color:${color};font-weight:bold;text-decoration:none">${p.player}</a></td>
+    <td style="color:${color};font-weight:bold">${p.ally}</td>
+    <td>${p.points.toLocaleString()}</td>
     <td>${p.time}</td>
    </tr>`;
  }).join("");
 
  document.getElementById(NS+"_result")?.remove();
-
- const d = document.createElement("div");
- d.id = NS+"_result";
-
- d.innerHTML = `
- <div style="position:fixed;inset:0;background:rgba(2,6,23,.8);display:flex;align-items:center;justify-content:center">
-
-  <div style="width:90%;background:white;border-radius:10px;overflow:hidden">
-
-   <div style="background:#2563eb;color:white;padding:10px;display:flex;justify-content:space-between">
-    Results
-    <button id="${NS}_close" style="background:none;border:none;color:white">✕</button>
+ const d=document.createElement("div");
+ d.id=NS+"_result";
+ d.style="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;justify-content:center;align-items:center;z-index:999999;";
+ d.innerHTML=`
+ <div style="width:90%;background:white;border-radius:10px">
+  <div style="background:#2563eb;color:white;padding:10px;display:flex;justify-content:space-between">Results<button id="${NS}_close">✕</button></div>
+  <div style="padding:10px">
+   <div style="display:flex;gap:5px">
+    <button data-s="rank">Rank</button>
+    <button data-s="player">Player</button>
+    <button data-s="ally">Ally</button>
+    <button data-s="points">Points</button>
+    <button data-s="time">Time</button>
    </div>
-
-   <div style="padding:10px">
-
+   <div style="max-height:350px;overflow:auto">
     <table style="width:100%;border-collapse:collapse">
-     <tr style="background:#eee">
-      <th>#</th><th>Rank</th><th>Player</th><th>Ally</th><th>Points</th><th>Time</th>
-     </tr>
-     ${rows}
+     <thead><tr style="background:#eee"><th>#</th><th>Rank</th><th>Player</th><th>Ally</th><th>Points</th><th>Time</th></tr></thead>
+     <tbody>${rows}</tbody>
     </table>
-
-    <div style="margin-top:10px;display:flex;gap:5px">
-     <button id="${NS}_copy">Copy</button>
-     <button id="${NS}_download">Download</button>
-     <button id="${NS}_close2">Close</button>
-    </div>
-
+   </div>
+   <div style="display:flex;gap:5px;margin-top:10px">
+    <button id="${NS}_copy">Copy BBCode</button>
+    <button id="${NS}_dl">Download</button>
+    <button id="${NS}_close2">Close</button>
    </div>
   </div>
  </div>`;
-
  document.body.appendChild(d);
 
- document.getElementById(NS+"_close").onclick = ()=>d.remove();
- document.getElementById(NS+"_close2").onclick = ()=>d.remove();
+ document.querySelectorAll("[data-s]").forEach(btn=>{
+  btn.onclick=()=>{
+   const key=btn.dataset.s;
+   this.sortDir=(this.sortKey===key && this.sortDir==="desc")?"asc":"desc";
+   this.sortKey=key;
+   this.buildUI();
+  };
+ });
 
- // ✅ BBCode
+ document.getElementById(NS+"_close").onclick=()=>d.remove();
+ document.getElementById(NS+"_close2").onclick=()=>d.remove();
+
  let txt="[table]\n";
  txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
-
  data.forEach((p,i)=>{
   txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
  });
-
  txt+="[/table]";
 
- document.getElementById(NS+"_copy").onclick = ()=>{
-  navigator.clipboard.writeText(txt);
- };
-
- document.getElementById(NS+"_download").onclick = ()=>{
-  const blob = new Blob([txt], {type:"text/plain"});
+ document.getElementById(NS+"_copy").onclick=()=>navigator.clipboard.writeText(txt);
+ document.getElementById(NS+"_dl").onclick=()=>{
+  const blob=new Blob([txt],{type:"text/plain"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download="ranking.txt";
   a.click();
  };
-
 }
 
 };
