@@ -11,7 +11,6 @@ const $ = id => document.getElementById(NS + id);
 const cleanPlayer = str => str.replace(/\u00A0/g," ").trim();
 const normTribe = str => str.replace(/\s/g,"").trim();
 
-// ✅ SCRIPT OBJECT
 const Script = {
 
 results: [],
@@ -153,7 +152,7 @@ buildUI(){
  this.sort();
  if(top) data=data.slice(0,top);
 
- // ✅ COLOR SYSTEM
+ // ✅ COLORS
  const palette=["#2563eb","#16a34a","#dc2626","#d97706","#7c3aed","#0ea5e9"];
  let colorMap={}, idx=0;
 
@@ -165,7 +164,6 @@ buildUI(){
   return colorMap[a];
  };
 
- // ✅ ROWS
  let rows=data.map((p,i)=>{
   const color=getColor(p.ally);
 
@@ -186,23 +184,17 @@ buildUI(){
    </tr>`;
  }).join("");
 
- // ✅ MODAL
  document.getElementById(NS+"_result")?.remove();
 
  const d=document.createElement("div");
  d.id=NS+"_result";
 
- d.style="
- position:fixed;inset:0;background:rgba(0,0,0,.8);
- display:flex;justify-content:center;align-items:center;
- z-index:999999;
- ";
+ d.style="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;justify-content:center;align-items:center;z-index:999999;";
 
  d.innerHTML=`
  <div style="width:90%;background:white;border-radius:10px">
 
-  <div style="background:#2563eb;color:white;padding:10px;
-   display:flex;justify-content:space-between">
+  <div style="background:#2563eb;color:white;padding:10px;display:flex;justify-content:space-between">
    Results
    <button id="${NS}_close">✕</button>
   </div>
@@ -239,11 +231,10 @@ buildUI(){
 
  document.body.appendChild(d);
 
- // ✅ SORT
  document.querySelectorAll("[data-s]").forEach(btn=>{
   btn.onclick=()=>{
    const key=btn.dataset.s;
-   this.sortDir=(this.sortKey===key&&this.sortDir==="desc")?"asc":"desc";
+   this.sortDir=(this.sortKey===key && this.sortDir==="desc")?"asc":"desc";
    this.sortKey=key;
    this.buildUI();
   };
@@ -252,7 +243,7 @@ buildUI(){
  document.getElementById(NS+"_close").onclick=()=>d.remove();
  document.getElementById(NS+"_close2").onclick=()=>d.remove();
 
- // ✅ BBCODE
+ // ✅ BBCode
  let txt="[table]\n";
  txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
 
