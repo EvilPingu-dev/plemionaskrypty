@@ -7,46 +7,48 @@ const baseUrl = location.origin + "/game.php";
 
 const $ = id => document.getElementById(NS + id);
 
-// ✅ helpers
 const cleanPlayer = str => str.replace(/\u00A0/g," ").trim();
 const normTribe = str => str.replace(/\s/g,"").trim();
 
-let sortKey = "points";
-let sortDir = "desc";
+let Script; // ✅ accessible globally
 
-// ✅ UI
+// ✅ STYLE
 const style = document.createElement("style");
 style.textContent = `
 #${NS}_overlay{position:fixed;inset:0;background:rgba(2,6,23,.75);display:flex;align-items:center;justify-content:center;z-index:999999;}
 #${NS}_modal{width:420px;background:white;border-radius:12px;border:2px solid #2563eb;}
-#${NS}_header{background:linear-gradient(#0b1f4d,#2563eb);color:white;padding:10px;}
+#${NS}_header{background:#2563eb;color:white;padding:10px;}
 #${NS}_body{padding:10px}
 textarea{width:100%;height:80px}
-button{width:100%;margin-top:6px;padding:6px}
+button{margin:4px 0;padding:6px;width:100%}
 #${NS}_bar{height:6px;background:#2563eb;width:0}
 #${NS}_progress{background:#eee;margin-top:6px}
 `;
 document.head.appendChild(style);
 
-const Script = {
+Script = {
 
 results: [],
 seen: new Set(),
 targets: [],
-found: 0,
+sortKey: "points",
+sortDir: "desc",
 
 init(){
 
- document.body.insertAdjacentHTML("beforeend",`
- <div id="${NS}_overlay">
+ document.getElementById(NS+"_overlay")?.remove();
+
+ const el = document.createElement("div");
+ el.id = NS+"_overlay";
+
+ el.innerHTML = `
  <div id="${NS}_modal">
   <div id="${NS}_header">Scavenge PRO</div>
   <div id="${NS}_body">
 
    <textarea id="${NS}_input" placeholder=":G:\n~G~"></textarea>
-
-   <input id="${NS}_top" placeholder="Top X (optional)" style="width:100%;margin-top:4px"/>
-   <input id="${NS}_min" placeholder="Min Points (optional)" style="width:100%;margin-top:4px"/>
+   <input id="${NS}_top" placeholder="Top X">
+   <input id="${NS}_min" placeholder="Min Points">
 
    <button id="${NS}_start">START</button>
 
@@ -54,14 +56,15 @@ init(){
    <div id="${NS}_log"></div>
 
   </div>
- </div>
- </div>`);
+ </div>`;
 
- document.getElementById(NS+"_start").onclick = ()=>this.start();
+ document.body.appendChild(el);
+
+ $( "_start").onclick = ()=>this.start();
 },
 
-log(t){ document.getElementById(NS+"_log").innerText = t },
-prog(p){ document.getElementById(NS+"_bar").style.width = p+"%" },
+log(t){ $( "_log").innerText = t },
+prog(p){ $( "_bar").style.width = p+"%" },
 
 async fetchDoc(url){
  const r = await fetch(url);
@@ -76,7 +79,6 @@ async start(){
 
  this.results = [];
  this.seen = new Set();
- this.found = 0;
 
  this.targets = $( "_input").value
   .split(/\n|\s/)
@@ -84,6 +86,9 @@ async start(){
   .filter(Boolean);
 
  await this.scan();
+
+ // ✅ CLOSE START WINDOW
+ document.getElementById(NS+"_overlay").remove();
 },
 
 async scan(){
@@ -125,125 +130,128 @@ async scan(){
   this.prog((i/200)*100);
   this.log(`Found: ${this.results.length}`);
 
-  await new Promise(r=>setTimeout(r,300));
+  await new Promise(r=>setTimeout(r,250));
  }
 
  this.buildUI();
 },
 
 // ✅ SORT
-sortData(){
+sort(){
 
  this.results.sort((a,b)=>{
 
-  let A = a[sortKey];
-  let B = b[sortKey];
+  let A = a[this.sortKey];
+  let B = b[this.sortKey];
 
-  if(sortKey==="player"||sortKey==="ally"||sortKey==="time"){
-    return sortDir==="asc"
-      ? A.localeCompare(B)
-      : B.localeCompare(A);
+  if(typeof A === "string"){
+   return this.sortDir==="asc"
+    ? A.localeCompare(B)
+    : B.localeCompare(A);
   }
 
-  return sortDir==="asc" ? A-B : B-A;
+  return this.sortDir==="asc" ? A-B : B-A;
  });
 },
 
 buildUI(){
 
- const top = parseInt($( "_top").value) || null;
- const min = parseInt($( "_min").value.replace(/\./g,'')) || 0;
+ const top = parseInt($( "_top")?.value) || null;
+ const min = parseInt($( "_min")?.value) || 0;
 
- this.results = this.results.filter(x => x.points >= min);
+ let data = this.results.filter(x=>x.points>=min);
 
- this.sortData();
+ this.sort();
+ if(top) data = data.slice(0, top);
 
- if(top) this.results = this.results.slice(0, top);
+ // ✅ RESULT UI
+ document.getElementById(NS+"_result")?.remove();
 
- this.render();
-},
+ const d = document.createElement("div");
+ d.id = NS+"_result";
 
-render(){
-
- let html = `
-<div id="${NS}_result" style="
+ d.style = `
  position:fixed;inset:0;background:rgba(0,0,0,.8);
  display:flex;justify-content:center;align-items:center;
- z-index:9999999;
-">
- <div style="
-  width:80%;background:white;border-radius:10px;overflow:hidden;
- ">
+ z-index:999999;
+ `;
 
- <div style="background:#2563eb;color:white;padding:10px;">
-  Results
+ d.innerHTML = `
+ <div style="width:80%;background:white;border-radius:10px">
+  
+  <div style="background:#2563eb;color:white;padding:10px;
+   display:flex;justify-content:space-between">
+   Results
+   <button id="${NS}_close">✕</button>
+  </div>
+
+  <div style="padding:10px">
+
+   <div style="display:flex;gap:5px">
+    <button data-sort="rank">Rank</button>
+    <button data-sort="player">Player</button>
+    <button data-sort="ally">Ally</button>
+    <button data-sort="points">Points</button>
+    <button data-sort="time">Time</button>
+   </div>
+
+   <textarea id="${NS}_out" style="width:100%;height:300px"></textarea>
+
+   <div style="display:flex;gap:5px">
+    <button id="${NS}_copy">Copy</button>
+    <button id="${NS}_download">Download</button>
+    <button id="${NS}_close2">Close</button>
+   </div>
+
+  </div>
+
  </div>
+ `;
 
- <div style="padding:10px">
+ document.body.appendChild(d);
 
- <div style="display:flex;gap:5px;margin-bottom:5px">
-  <button onclick="(${setSort.toString()})('rank')">Rank</button>
-  <button onclick="(${setSort.toString()})('player')">Player</button>
-  <button onclick="(${setSort.toString()})('ally')">Ally</button>
-  <button onclick="(${setSort.toString()})('points')">Points</button>
-  <button onclick="(${setSort.toString()})('time')">Time</button>
- </div>
+ // ✅ EVENTS FIXED
+ document.querySelectorAll(`[data-sort]`).forEach(btn=>{
+  btn.onclick = () => {
+   const key = btn.dataset.sort;
 
- <textarea id="${NS}_out" style="width:100%;height:300px"></textarea>
+   this.sortDir = (this.sortKey===key && this.sortDir==="desc") ? "asc" : "desc";
+   this.sortKey = key;
 
- <div style="display:flex;gap:5px;margin-top:5px">
-  <button onclick="navigator.clipboard.writeText(document.getElementById('${NS}_out').value)">Copy</button>
-  <button onclick="download()">Download</button>
-  <button onclick="document.getElementById('${NS}_result').remove()">Close</button>
- </div>
+   this.buildUI();
+  };
+ });
 
- </div>
- </div>
-</div>
-`;
+ document.getElementById(NS+"_close").onclick = ()=>d.remove();
+ document.getElementById(NS+"_close2").onclick = ()=>d.remove();
 
- document.body.insertAdjacentHTML("beforeend", html);
+ document.getElementById(NS+"_copy").onclick = ()=>{
+   navigator.clipboard.writeText($( "_out").value);
+ };
 
- this.updateText();
-},
+ document.getElementById(NS+"_download").onclick = ()=>{
+   const blob = new Blob([$( "_out").value], {type:"text/plain"});
+   const a=document.createElement("a");
+   a.href=URL.createObjectURL(blob);
+   a.download="ranking.txt";
+   a.click();
+ };
 
-updateText(){
-
+ // ✅ BUILD TEXT
  let txt="[table]\n";
  txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
 
- this.results.forEach((p,i)=>{
+ data.forEach((p,i)=>{
   txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
  });
 
  txt+="[/table]";
 
  document.getElementById(NS+"_out").value = txt;
+
 }
 
 };
-
-// ✅ sorting handler
-function setSort(key){
-
- sortDir = (sortKey === key && sortDir==="desc") ? "asc" : "desc";
- sortKey = key;
-
- Script.sortData();
- Script.updateText();
-}
-
-// ✅ download
-function download(){
-
- const txt = document.getElementById(NS+"_out").value;
- const blob = new Blob([txt],{type:"text/plain"});
- const a = document.createElement("a");
-
- a.href = URL.createObjectURL(blob);
- a.download = "ranking.txt";
- a.click();
-}
 
 Script.init();
 
