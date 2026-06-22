@@ -20,7 +20,9 @@ min: 0,
 sortKey: "points",
 sortDir: "desc",
 
+// ✅ START UI (bleibt clean)
 init(){
+
  document.getElementById(NS+"_overlay")?.remove();
 
  const el = document.createElement("div");
@@ -103,6 +105,7 @@ async scan(){
 
  for(let i=0;i<200;i++){
 
+  // ✅ STOP früh (Top X)
   if(this.top && this.results.length >= this.top) break;
 
   const doc = await this.fetchDoc(
@@ -178,15 +181,21 @@ buildUI(){
  };
 
  let rows = data.map((p,i)=>{
+
   const c = getColor(p.ally);
 
   return `
   <tr style="background:${c}20">
    <td>${i+1}</td>
    <td>${p.rank}</td>
-   <td><a href="${baseUrl}?screen=info_player&name=${encodeURIComponent(p.player)}"
-       target="_blank" style="color:${c};font-weight:bold">${p.player}</a></td>
-   <td style="color:${c}">${p.ally}</td>
+   <td>
+     <a href="${baseUrl}?screen=info_player&name=${encodeURIComponent(p.player)}"
+        target="_blank"
+        style="color:${c};font-weight:bold;text-decoration:none">
+        ${p.player}
+     </a>
+   </td>
+   <td style="color:${c};font-weight:bold">${p.ally}</td>
    <td>${p.points}</td>
    <td>${p.time}</td>
   </tr>`;
@@ -218,6 +227,15 @@ buildUI(){
 
    <div style="padding:10px;overflow:auto;max-height:70vh">
 
+    <!-- ✅ SORT -->
+    <div style="display:flex;gap:5px;margin-bottom:6px">
+     <button data-s="rank">Rank</button>
+     <button data-s="player">Player</button>
+     <button data-s="ally">Ally</button>
+     <button data-s="points">Points</button>
+     <button data-s="time">Time</button>
+    </div>
+
     <table style="width:100%;border-collapse:collapse">
      <tr style="background:#eee">
       <th>#</th><th>Rank</th><th>Player</th><th>Ally</th><th>Points</th><th>Time</th>
@@ -238,7 +256,17 @@ buildUI(){
 
  document.getElementById(NS+"_close").onclick = ()=>d.remove();
 
- // ✅ BBCode export
+ // ✅ SORT EVENTS
+ document.querySelectorAll("[data-s]").forEach(btn=>{
+  btn.onclick = ()=>{
+   const key = btn.dataset.s;
+   this.sortDir = (this.sortKey===key && this.sortDir==="desc") ? "asc" : "desc";
+   this.sortKey = key;
+   this.buildUI();
+  };
+ });
+
+ // ✅ BBCode
  let txt="[table]\n";
  txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
 
