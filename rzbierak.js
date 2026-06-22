@@ -18,113 +18,47 @@ targets: [],
 sortKey: "points",
 sortDir: "desc",
 
+// ✅ BEAUTIFUL START UI
 init(){
-
  document.getElementById(NS+"_overlay")?.remove();
 
  const el = document.createElement("div");
  el.id = NS+"_overlay";
 
  el.innerHTML = `
- <div style="
-  position:fixed;inset:0;
-  background:rgba(2,6,23,.75);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:999999;
- ">
+ <div style="position:fixed;inset:0;background:rgba(2,6,23,.75);display:flex;align-items:center;justify-content:center;z-index:999999;">
+  <div style="width:420px;background:white;border-radius:12px;border:2px solid #2563eb;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);">
 
-  <div style="
-   width:420px;
-   background:white;
-   border-radius:12px;
-   border:2px solid #2563eb;
-   overflow:hidden;
-   box-shadow:0 20px 60px rgba(0,0,0,.4);
-  ">
-
-   <!-- HEADER -->
-   <div style="
-    background:linear-gradient(180deg,#0b1f4d,#2563eb);
-    color:white;
-    padding:10px;
-    font-weight:bold;
-    display:flex;
-    justify-content:space-between;
-   ">
+   <div style="background:linear-gradient(180deg,#0b1f4d,#2563eb);color:white;padding:10px;font-weight:bold;display:flex;justify-content:space-between;">
     Scavenge PRO
-    <button id="${NS}_close_start" style="
-     background:none;border:none;color:white;
-     font-size:16px;cursor:pointer;
-    ">✕</button>
+    <button id="${NS}_close_start" style="background:none;border:none;color:white;font-size:16px;cursor:pointer;">✕</button>
    </div>
 
-   <!-- BODY -->
    <div style="padding:12px">
 
-    <label style="font-size:13px;">Tribes</label>
-    <textarea id="${NS}_input" placeholder=":G:\n~G~" style="
-     margin-top:4px;
-     width:100%;
-     height:80px;
-     border-radius:8px;
-     border:1px solid #bfdbfe;
-     padding:6px;
-    "></textarea>
+    <textarea id="${NS}_input" placeholder=":G:\n~G~" style="width:100%;height:80px;border-radius:8px;border:1px solid #bfdbfe;padding:6px;"></textarea>
 
     <div style="display:flex;gap:6px;margin-top:8px">
-     <input id="${NS}_top" placeholder="Top X" style="
-      flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;
-     ">
-     <input id="${NS}_min" placeholder="Min Points" style="
-      flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;
-     ">
+     <input id="${NS}_top" placeholder="Top X" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;">
+     <input id="${NS}_min" placeholder="Min Points" style="flex:1;padding:6px;border-radius:6px;border:1px solid #ddd;">
     </div>
 
-    <button id="${NS}_start" style="
-     margin-top:10px;
-     width:100%;
-     padding:8px;
-     border:none;
-     border-radius:8px;
-     background:linear-gradient(180deg,#2563eb,#1e3a8a);
-     color:white;
-     font-weight:bold;
-     cursor:pointer;
-    ">START</button>
+    <button id="${NS}_start" style="margin-top:10px;width:100%;padding:8px;border:none;border-radius:8px;background:linear-gradient(180deg,#2563eb,#1e3a8a);color:white;font-weight:bold;cursor:pointer;">START</button>
 
-    <div style="
-     background:#eee;
-     margin-top:10px;
-     border-radius:4px;
-    ">
-     <div id="${NS}_bar" style="
-      height:6px;
-      background:#2563eb;
-      width:0%;
-      border-radius:4px;
-     "></div>
+    <div style="background:#eee;margin-top:10px;border-radius:4px;">
+     <div id="${NS}_bar" style="height:6px;background:#2563eb;width:0;border-radius:4px;"></div>
     </div>
 
-    <div id="${NS}_log" style="
-     margin-top:6px;
-     font-size:12px;
-     color:#333;
-    "></div>
-
+    <div id="${NS}_log" style="margin-top:6px;font-size:12px;"></div>
    </div>
 
   </div>
- </div>
- `;
+ </div>`;
 
  document.body.appendChild(el);
-
- // ✅ EVENTS
- document.getElementById(NS+"_start").onclick = ()=>this.start();
+ $("_start").onclick = ()=>this.start();
  document.getElementById(NS+"_close_start").onclick = ()=>el.remove();
-}
+},
 
 log(t){ $("_log").innerText = t },
 prog(p){ $("_bar").style.width = p+"%" },
@@ -255,6 +189,7 @@ buildUI(){
  txt+="[/table]";
 
  document.getElementById(NS+"_copy").onclick=()=>navigator.clipboard.writeText(txt);
+
  document.getElementById(NS+"_dl").onclick=()=>{
   const blob=new Blob([txt],{type:"text/plain"});
   const a=document.createElement("a");
