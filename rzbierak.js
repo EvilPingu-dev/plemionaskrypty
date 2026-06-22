@@ -7,76 +7,69 @@ const baseUrl = location.origin + "/game.php";
 
 const $ = id => document.getElementById(NS + id);
 
-// ✅ helpers
 const cleanPlayer = str => str.replace(/\u00A0/g," ").trim();
 const normTribe = str => str.replace(/\s/g,"").trim();
-
-let sortKey = "points";
-let sortDir = "desc";
-
-// ✅ UI
-const style = document.createElement("style");
-style.textContent = `
-#${NS}_overlay{position:fixed;inset:0;background:rgba(2,6,23,.75);display:flex;align-items:center;justify-content:center;z-index:999999;}
-#${NS}_modal{width:420px;background:white;border-radius:12px;border:2px solid #2563eb;}
-#${NS}_header{background:linear-gradient(#0b1f4d,#2563eb);color:white;padding:10px;}
-#${NS}_body{padding:10px}
-textarea{width:100%;height:80px}
-button{width:100%;margin-top:6px;padding:6px}
-#${NS}_bar{height:6px;background:#2563eb;width:0}
-#${NS}_progress{background:#eee;margin-top:6px}
-`;
-document.head.appendChild(style);
 
 const Script = {
 
 results: [],
 seen: new Set(),
 targets: [],
-found: 0,
+sortKey: "points",
+sortDir: "desc",
 
+// ✅ START UI CLEAN
 init(){
 
- document.body.insertAdjacentHTML("beforeend",`
- <div id="${NS}_overlay">
- <div id="${NS}_modal">
-  <div id="${NS}_header">Scavenge PRO</div>
-  <div id="${NS}_body">
+ document.getElementById(NS+"_overlay")?.remove();
 
-   <textarea id="${NS}_input" placeholder=":G:\n~G~"></textarea>
+ const el = document.createElement("div");
+ el.id = NS+"_overlay";
 
-   <input id="${NS}_top" placeholder="Top X (optional)" style="width:100%;margin-top:4px"/>
-   <input id="${NS}_min" placeholder="Min Points (optional)" style="width:100%;margin-top:4px"/>
+ el.innerHTML = `
+ <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:999999">
+   <div style="width:420px;background:white;border-radius:10px;padding:12px">
 
-   <button id="${NS}_start">START</button>
+     <h3>Scavenge PRO</h3>
 
-   <div id="${NS}_progress"><div id="${NS}_bar"></div></div>
-   <div id="${NS}_log"></div>
+     <textarea id="${NS}_input" placeholder=":G:\n~G~" style="width:100%;height:80px"></textarea>
 
-  </div>
- </div>
- </div>`);
+     <input id="${NS}_top" placeholder="Top X" style="width:100%;margin-top:5px">
+     <input id="${NS}_min" placeholder="Min Points" style="width:100%;margin-top:5px">
+
+     <button id="${NS}_start" style="width:100%;margin-top:8px">START</button>
+
+     <div style="background:#eee;margin-top:6px">
+       <div id="${NS}_bar" style="height:6px;background:#2563eb;width:0"></div>
+     </div>
+
+     <div id="${NS}_log" style="margin-top:5px;font-size:12px"></div>
+
+   </div>
+ </div>`;
+
+ document.body.appendChild(el);
 
  document.getElementById(NS+"_start").onclick = ()=>this.start();
 },
 
-log(t){ document.getElementById(NS+"_log").innerText = t },
-prog(p){ document.getElementById(NS+"_bar").style.width = p+"%" },
+log(t){ $( "_log").innerText = t },
+prog(p){ $( "_bar").style.width = p+"%" },
 
 async fetchDoc(url){
  const r = await fetch(url);
- if(r.status===429){
-  await new Promise(r=>setTimeout(r,1500));
-  return this.fetchDoc(url);
+ if(r.status === 429){
+   await new Promise(r=>setTimeout(r,1500));
+   return this.fetchDoc(url);
  }
- return new DOMParser().parseFromString(await r.text(),"text/html");
+ const text = await r.text();
+ return new DOMParser().parseFromString(text,"text/html");
 },
 
 async start(){
 
  this.results = [];
  this.seen = new Set();
- this.found = 0;
 
  this.targets = $( "_input").value
   .split(/\n|\s/)
@@ -84,6 +77,8 @@ async start(){
   .filter(Boolean);
 
  await this.scan();
+
+ document.getElementById(NS+"_overlay").remove();
 },
 
 async scan(){
@@ -96,25 +91,26 @@ async scan(){
 
   const rows = doc.querySelectorAll("#in_a_day_ranking_table tr");
 
-  rows.forEach(r=>{
+  rows.forEach(r => {
 
    const td = r.querySelectorAll("td");
-   if(td.length<5) return;
+   if(td.length < 5) return;
 
    const player = cleanPlayer(td[1].textContent);
    const tribeRaw = td[2].textContent.trim();
    const tribe = normTribe(tribeRaw);
 
-   if(!this.targets.some(t=>tribe.includes(t))) return;
+   if(!this.targets.some(t => tribe.includes(t))) return;
 
    if(this.seen.has(player)) return;
+
    this.seen.add(player);
 
    console.log("✅ MATCH:", player, "→", tribeRaw);
 
    this.results.push({
     rank: parseInt(td[0].innerText),
-    player,
+    player: player,
     ally: tribeRaw,
     points: parseInt(td[3].innerText.replace(/\./g,'')),
     time: td[4].innerText
@@ -122,128 +118,100 @@ async scan(){
 
   });
 
-  this.prog((i/200)*100);
-  this.log(`Found: ${this.results.length}`);
+  this.prog(i/200*100);
+  this.log("Found: " + this.results.length);
 
-  await new Promise(r=>setTimeout(r,300));
+  await new Promise(r=>setTimeout(r,250));
  }
 
  this.buildUI();
 },
 
-// ✅ SORT
-sortData(){
+sort(){
 
  this.results.sort((a,b)=>{
 
-  let A = a[sortKey];
-  let B = b[sortKey];
+  const A = a[this.sortKey];
+  const B = b[this.sortKey];
 
-  if(sortKey==="player"||sortKey==="ally"||sortKey==="time"){
-    return sortDir==="asc"
-      ? A.localeCompare(B)
-      : B.localeCompare(A);
+  if(typeof A === "string"){
+   return this.sortDir==="asc"
+    ? A.localeCompare(B)
+    : B.localeCompare(A);
   }
 
-  return sortDir==="asc" ? A-B : B-A;
+  return this.sortDir==="asc" ? A-B : B-A;
  });
 },
 
 buildUI(){
 
- const top = parseInt($( "_top").value) || null;
- const min = parseInt($( "_min").value.replace(/\./g,'')) || 0;
+ let data = [...this.results];
 
- this.results = this.results.filter(x => x.points >= min);
+ this.sort();
 
- this.sortData();
+ const top = parseInt($( "_top")?.value)||null;
+ const min = parseInt($( "_min")?.value)||0;
 
- if(top) this.results = this.results.slice(0, top);
+ data = data.filter(x => x.points >= min);
 
- this.render();
-},
+ if(top) data = data.slice(0, top);
 
-render(){
+ const colors = ["#2563eb","#16a34a","#dc2626","#d97706"];
+ let colorMap = {}, idx=0;
 
- let html = `
-<div id="${NS}_result" style="
- position:fixed;inset:0;background:rgba(0,0,0,.8);
- display:flex;justify-content:center;align-items:center;
- z-index:9999999;
-">
- <div style="
-  width:80%;background:white;border-radius:10px;overflow:hidden;
- ">
+ const getColor = a => {
+  if(!colorMap[a]){
+   colorMap[a] = colors[idx % colors.length];
+   idx++;
+  }
+  return colorMap[a];
+ };
 
- <div style="background:#2563eb;color:white;padding:10px;">
-  Results
- </div>
+ let rows = data.map((p,i)=>{
+  const color = getColor(p.ally);
 
- <div style="padding:10px">
+  return `
+  <tr style="background:${color}20">
+   <td>${i+1}</td>
+   <td>${p.rank}</td>
+   <td>
+    ${baseUrl}?screen=info_player&name=${encodeURIComponent(p.player)} target="_blank" style="color:${color}">
+     ${p.player}
+    </a>
+   </td>
+   <td>${p.ally}</td>
+   <td>${p.points}</td>
+   <td>${p.time}</td>
+  </tr>`;
+ }).join("");
 
- <div style="display:flex;gap:5px;margin-bottom:5px">
-  <button onclick="(${setSort.toString()})('rank')">Rank</button>
-  <button onclick="(${setSort.toString()})('player')">Player</button>
-  <button onclick="(${setSort.toString()})('ally')">Ally</button>
-  <button onclick="(${setSort.toString()})('points')">Points</button>
-  <button onclick="(${setSort.toString()})('time')">Time</button>
- </div>
+ const d = document.createElement("div");
+ d.id = NS+"_result";
 
- <textarea id="${NS}_out" style="width:100%;height:300px"></textarea>
+ d.style="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center";
 
- <div style="display:flex;gap:5px;margin-top:5px">
-  <button onclick="navigator.clipboard.writeText(document.getElementById('${NS}_out').value)">Copy</button>
-  <button onclick="download()">Download</button>
-  <button onclick="document.getElementById('${NS}_result').remove()">Close</button>
- </div>
+ d.innerHTML = `
+ <div style="width:80%;background:white;padding:10px">
 
- </div>
- </div>
-</div>
-`;
+  <button id="${NS}_close">Close</button>
 
- document.body.insertAdjacentHTML("beforeend", html);
+  <table style="width:100%;margin-top:5px">
+   <tr>
+    <th>#</th><th>Rank</th><th>Player</th><th>Ally</th><th>Points</th><th>Time</th>
+   </tr>
+   ${rows}
+  </table>
 
- this.updateText();
-},
+ </div>`;
 
-updateText(){
+ document.body.appendChild(d);
 
- let txt="[table]\n";
- txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
+ document.getElementById(NS+"_close").onclick = ()=>d.remove();
 
- this.results.forEach((p,i)=>{
-  txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
- });
-
- txt+="[/table]";
-
- document.getElementById(NS+"_out").value = txt;
 }
 
 };
-
-// ✅ sorting handler
-function setSort(key){
-
- sortDir = (sortKey === key && sortDir==="desc") ? "asc" : "desc";
- sortKey = key;
-
- Script.sortData();
- Script.updateText();
-}
-
-// ✅ download
-function download(){
-
- const txt = document.getElementById(NS+"_out").value;
- const blob = new Blob([txt],{type:"text/plain"});
- const a = document.createElement("a");
-
- a.href = URL.createObjectURL(blob);
- a.download = "ranking.txt";
- a.click();
-}
 
 Script.init();
 
