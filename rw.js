@@ -1,283 +1,314 @@
 (async function () {
 
-try {
-
-const NS = "rzb";
+const NS = "sup_";
 const baseUrl = location.origin + "/game.php";
-
-const $ = id => document.getElementById(NS + id);
-
-const cleanPlayer = str => str.replace(/\u00A0/g," ").trim();
-const normTribe = str => str.replace(/\s/g,"").trim();
 
 const Script = {
 
 results: [],
 seen: new Set(),
-targets: [],
-top: null,
-min: 0,
-sortKey: "points",
-sortDir: "desc",
 
-// ✅ START UI (unchanged)
 init(){
 
- document.getElementById(NS+"_overlay")?.remove();
+document.getElementById(NS+"overlay")?.remove();
 
- const el = document.createElement("div");
- el.id = NS+"_overlay";
+const div = document.createElement("div");
 
- el.innerHTML = `
- <div style="position:fixed;inset:0;background:rgba(2,6,23,.75);
- display:flex;align-items:center;justify-content:center;z-index:999999">
-  <div style="width:420px;background:white;border-radius:12px;border:2px solid #2563eb;overflow:hidden">
+div.id = NS+"overlay";
 
-   <div style="background:linear-gradient(#0b1f4d,#2563eb);
-    color:white;padding:10px;display:flex;justify-content:space-between">
-    Support PRO
-    <button id="${NS}_close_start" style="background:none;border:none;color:white;font-size:16px">✕</button>
-   </div>
+div.innerHTML = `
+<div style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:999999;">
+<div style="width:420px;background:white;border-radius:10px;padding:15px;">
 
-   <div style="padding:10px">
+<h2>Support Ranking PRO</h2>
 
-    <textarea id="${NS}_input" placeholder=":G:\n~G~"
-     style="width:100%;height:80px;border-radius:6px;border:1px solid #ccc;padding:6px"></textarea>
+<textarea id="${NS}tribes"
+style="width:100%;height:80px;"
+placeholder="MILF3&#10;Cart3l"></textarea>
 
-    <div style="display:flex;gap:6px;margin-top:6px">
-      <input id="${NS}_top" placeholder="Top X" style="flex:1;padding:6px">
-      <input id="${NS}_min" placeholder="Min Points" style="flex:1;padding:6px">
-    </div>
+<div style="margin-top:8px;">
+<input id="${NS}top" placeholder="Top X" style="width:48%;">
+<input id="${NS}min" placeholder="Min Points" style="width:48%;">
+</div>
 
-    <button id="${NS}_start" style="
-      margin-top:8px;width:100%;padding:8px;
-      background:#2563eb;color:white;border:none;border-radius:6px;font-weight:bold">
-      START
-    </button>
+<button id="${NS}start"
+style="width:100%;margin-top:10px;">
+START
+</button>
 
-    <div style="background:#eee;margin-top:8px">
-      <div id="${NS}_bar" style="height:6px;background:#2563eb;width:0"></div>
-    </div>
+<div style="background:#ddd;margin-top:10px;">
+<div id="${NS}bar"
+style="height:6px;background:#2563eb;width:0%;">
+</div>
+</div>
 
-    <div id="${NS}_log" style="font-size:12px;margin-top:6px"></div>
+<div id="${NS}log"
+style="margin-top:8px;font-size:12px;">
+Ready
+</div>
 
-   </div>
-  </div>
- </div>`;
+</div>
+</div>
+`;
 
- document.body.appendChild(el);
+document.body.appendChild(div);
 
- $( "_start").onclick = ()=>this.start();
- document.getElementById(NS+"_close_start").onclick = ()=>el.remove();
+document.getElementById(NS+"start").onclick =
+()=>this.start();
+
 },
 
-log(t){ $( "_log").innerText = t },
-prog(p){ $( "_bar").style.width = p+"%" },
+log(txt){
+document.getElementById(NS+"log").innerText = txt;
+},
+
+prog(v){
+document.getElementById(NS+"bar").style.width = v+"%";
+},
 
 async fetchDoc(url){
- const r = await fetch(url);
- if(r.status === 429){
-  await new Promise(r=>setTimeout(r,1500));
-  return this.fetchDoc(url);
- }
- return new DOMParser().parseFromString(await r.text(),"text/html");
+
+const r = await fetch(url);
+
+return new DOMParser()
+.parseFromString(await r.text(),"text/html");
+
 },
 
 async start(){
 
- this.results = [];
- this.seen = new Set();
+this.results = [];
+this.seen = new Set();
 
- this.targets = $( "_input").value
-  .split(/\n|\s/)
-  .map(normTribe)
-  .filter(Boolean);
+this.targets =
+document.getElementById(NS+"tribes")
+.value
+.split(/\n|\s/)
+.map(x=>x.trim())
+.filter(Boolean);
 
- this.top = parseInt($( "_top").value) || null;
- this.min = parseInt($( "_min").value) || 0;
+this.top =
+parseInt(
+document.getElementById(NS+"top").value
+) || 0;
 
- await this.scan();
+this.min =
+parseInt(
+document.getElementById(NS+"min").value
+) || 0;
 
- document.getElementById(NS+"_overlay").remove();
+await this.scan();
+
+document.getElementById(NS+"overlay")?.remove();
+
+this.showResults();
+
 },
 
-// ✅ SUPPORT SCAN (CORRECT!)
 async scan(){
 
- for(let i=0;i<200;i++){
+for(let page=0; page<200; page++){
 
-  if(this.top && this.results.length >= this.top) break;
+if(this.top && this.results.length >= this.top)
+break;
 
-  const doc = await this.fetchDoc(
-   `${baseUrl}?village=${game_data.village.id}&screen=ranking&mode=kill_player&type=support&offset=${i*25}`
-  );
+const doc = await this.fetchDoc(
+`${baseUrl}?village=${game_data.village.id}&screen=ranking&mode=kill_player&type=support&offset=${page*25}`
+);
 
-  const rows = doc.querySelectorAll("#ranking_table tr");
+const table =
+[...doc.querySelectorAll("table.vis")]
+.find(t=>{
 
-  if(rows.length <= 1) break;
+const h =
+[...t.querySelectorAll("th")]
+.map(x=>x.textContent.trim());
 
-  rows.forEach(r=>{
+return h.includes("Ranking")
+&& h.includes("Nazwa")
+&& h.includes("Plemię")
+&& h.includes("Pokonany");
 
-   const td = r.querySelectorAll("td");
-   if(td.length < 4) return; // ✅ FIX
+});
 
-   const points = parseInt(td[3].innerText.replace(/\./g,''));
-   if(points < this.min) return;
+if(!table) break;
 
-   const player = cleanPlayer(td[1].textContent);
-   const tribeRaw = td[2].textContent.trim();
-   const tribe = normTribe(tribeRaw);
+const rows = table.querySelectorAll("tr");
 
-   if(!this.targets.some(t=>tribe.includes(t))) return;
-   if(this.seen.has(player)) return;
+let found = 0;
 
-   this.seen.add(player);
+rows.forEach(r=>{
 
-   this.results.push({
-    rank: parseInt(td[0].innerText),
-    player,
-    ally: tribeRaw,
-    points,
-    time: "-" // ✅ no time here
-   });
+const td = r.querySelectorAll("td");
 
-  });
+if(td.length !== 4)
+return;
 
-  this.prog((i/200)*100);
-  this.log(`Found: ${this.results.length}`);
+found++;
 
-  await new Promise(r=>setTimeout(r,250));
- }
+const rank =
+parseInt(td[0].textContent.trim());
 
- this.buildUI();
+const player =
+td[1]
+.querySelector("a")
+?.textContent
+.trim();
+
+const ally =
+td[2]
+.querySelector("a")
+?.textContent
+.trim() || "";
+
+const points =
+parseInt(
+td[3]
+.textContent
+.replace(/\./g,"")
+.trim()
+);
+
+if(points < this.min)
+return;
+
+if(this.targets.length){
+
+const ok =
+this.targets.some(
+t=>ally.includes(t)
+);
+
+if(!ok)
+return;
+}
+
+if(this.seen.has(player))
+return;
+
+this.seen.add(player);
+
+this.results.push({
+rank,
+player,
+ally,
+points
+});
+
+});
+
+this.log(
+`Page ${page+1} | Found ${this.results.length}`
+);
+
+this.prog((page/200)*100);
+
+if(found === 0)
+break;
+
+await new Promise(r=>setTimeout(r,250));
+}
+
 },
 
-sort(data){
+showResults(){
 
- data.sort((a,b)=>{
-  const A = a[this.sortKey];
-  const B = b[this.sortKey];
+this.results.sort(
+(a,b)=>b.points-a.points
+);
 
-  if(typeof A === "string"){
-   return this.sortDir==="asc" ? A.localeCompare(B) : B.localeCompare(A);
-  }
+const bbcode =
+this.results.map((p,i)=>
+`${i+1}. ${p.player} | ${p.ally} | ${p.points}`
+).join("\n");
 
-  return this.sortDir==="asc" ? A-B : B-A;
- });
-},
+const htmlRows =
+this.results.map((p,i)=>`
+<tr>
+<td>${i+1}</td>
+<td>${p.rank}</td>
+<td>${p.player}</td>
+<td>${p.ally}</td>
+<td>${p.points}</td>
+</tr>
+`).join("");
 
-buildUI(){
+const div =
+document.createElement("div");
 
- let data = [...this.results];
+div.innerHTML = `
+<div style="
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.8);
+z-index:999999;
+display:flex;
+justify-content:center;
+align-items:center;
+">
 
- if(this.top) data = data.slice(0,this.top);
+<div style="
+background:white;
+width:90%;
+max-width:1000px;
+max-height:80vh;
+overflow:auto;
+padding:15px;
+">
 
- this.sort(data);
+<h2>Support Results (${this.results.length})</h2>
 
- const colors=["#2563eb","#16a34a","#dc2626","#d97706"];
- let map={}, idx=0;
+<button id="${NS}copy">
+Copy
+</button>
 
- const getColor=a=>{
-  if(!map[a]){ map[a]=colors[idx%colors.length]; idx++; }
-  return map[a];
- };
+<button id="${NS}download">
+Download
+</button>
 
- let rows = data.map((p,i)=>{
+<table border="1"
+style="width:100%;margin-top:10px;">
+<tr>
+<th>#</th>
+<th>Rank</th>
+<th>Player</th>
+<th>Ally</th>
+<th>Points</th>
+</tr>
 
-  const c = getColor(p.ally);
+${htmlRows}
 
-  return `
-  <tr style="background:${c}20">
-   <td>${i+1}</td>
-   <td>${p.rank}</td>
-   <td>
-     <a href="${baseUrl}?screen=info_player&name=${encodeURIComponent(p.player)}"
-        target="_blank"
-        style="color:${c};font-weight:bold;text-decoration:none">
-        ${p.player}
-     </a>
-   </td>
-   <td style="color:${c};font-weight:bold">${p.ally}</td>
-   <td>${p.points}</td>
-   <td>-</td>
-  </tr>`;
- }).join("");
+</table>
 
- document.getElementById(NS+"_result")?.remove();
+</div>
+</div>
+`;
 
- const d = document.createElement("div");
- d.id = NS+"_result";
+document.body.appendChild(div);
 
- d.innerHTML = `
- <div style="position:fixed;inset:0;background:rgba(2,6,23,.8);
- display:flex;align-items:center;justify-content:center">
+document.getElementById(NS+"copy")
+.onclick = ()=>
+navigator.clipboard.writeText(bbcode);
 
-  <div style="width:90%;max-width:1000px;max-height:80vh;background:white;border-radius:12px;overflow:hidden">
+document.getElementById(NS+"download")
+.onclick = ()=>{
 
-   <div style="background:#2563eb;color:white;padding:10px;
-    display:flex;justify-content:space-between">
-    Results
-    <button id="${NS}_close" style="background:none;border:none;color:white">✕</button>
-   </div>
+const blob =
+new Blob([bbcode],
+{type:"text/plain"});
 
-   <div style="padding:10px;overflow:auto;max-height:70vh">
+const a =
+document.createElement("a");
 
-    <div style="display:flex;gap:5px;margin-bottom:6px">
-     <button data-s="rank">Rank</button>
-     <button data-s="player">Player</button>
-     <button data-s="ally">Ally</button>
-     <button data-s="points">Points</button>
-    </div>
+a.href =
+URL.createObjectURL(blob);
 
-    <table style="width:100%;border-collapse:collapse">
-     <tr style="background:#eee">
-      <th>#</th><th>Rank</th><th>Player</th><th>Ally</th><th>Points</th><th>-</th>
-     </tr>
-     ${rows}
-    </table>
+a.download =
+"support_ranking.txt";
 
-    <div style="margin-top:10px;display:flex;gap:5px">
-     <button id="${NS}_copy">Copy</button>
-     <button id="${NS}_download">Download</button>
-    </div>
+a.click();
 
-   </div>
-  </div>
- </div>`;
-
- document.body.appendChild(d);
-
- document.getElementById(NS+"_close").onclick = ()=>d.remove();
-
- document.querySelectorAll("[data-s]").forEach(btn=>{
-  btn.onclick = ()=>{
-   const key = btn.dataset.s;
-   this.sortDir = (this.sortKey===key && this.sortDir==="desc") ? "asc" : "desc";
-   this.sortKey = key;
-   this.buildUI();
-  };
- });
-
- let txt="[table]\n";
- txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]-[/**]\n";
-
- data.forEach((p,i)=>{
-  txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]-\n`;
- });
-
- txt+="[/table]";
-
- document.getElementById(NS+"_copy").onclick = ()=>{
-  navigator.clipboard.writeText(txt);
- };
-
- document.getElementById(NS+"_download").onclick = ()=>{
-  const blob = new Blob([txt], {type:"text/plain"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="support_ranking.txt";
-  a.click();
- };
+};
 
 }
 
@@ -285,10 +316,4 @@ buildUI(){
 
 Script.init();
 
-} catch(e){
- console.error(e);
- alert(e.message);
-}
-
 })();
-``
