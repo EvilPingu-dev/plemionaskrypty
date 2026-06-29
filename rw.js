@@ -436,7 +436,7 @@ getTextExport() {
     return `[table]
 [**]Pozycja[||]Nick[||]Plemie[||]Punkty[/**]
 ${this.filteredResults.map((p, i) =>
-    `[*]${i + 1}. [|]${p.player} [|]${p.ally || "-"} [|]${p.points}`
+    `[*]${i + 1}. [|]${p.player} [|]${p.ally || "-"} [|]${p.points.toLocaleString("de-DE")}`
 ).join("\n")}
 [/table]`;
 
