@@ -431,11 +431,16 @@
                 `${this.filteredResults.length} Results`;
         },
 
-        getTextExport() {
-            return this.filteredResults.map((p, i) =>
-                `${i + 1}. ${p.player} | ${p.ally} | ${p.points}`
-            ).join("\n");
-        },
+getTextExport() {
+
+    return `[table]
+[**]Pozycja[||]Nick[||]Plemie[||]Punkty[/**]
+${this.filteredResults.map((p, i) =>
+    `[*]${i + 1}. [|]${p.player} [|]${p.ally || "-"} [|]${p.points}`
+).join("\n")}
+[/table]`;
+
+},
 
         showResults() {
 
