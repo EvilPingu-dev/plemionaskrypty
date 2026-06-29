@@ -20,7 +20,6 @@ min: 0,
 sortKey: "points",
 sortDir: "desc",
 
-// ✅ START UI (wie dein Daily Script)
 init(){
 
  document.getElementById(NS+"_overlay")?.remove();
@@ -35,7 +34,7 @@ init(){
 
    <div style="background:linear-gradient(#0b1f4d,#2563eb);
     color:white;padding:10px;display:flex;justify-content:space-between">
-    Support Ranking
+    Support PRO
     <button id="${NS}_close_start" style="background:none;border:none;color:white;font-size:16px">✕</button>
    </div>
 
@@ -101,7 +100,7 @@ async start(){
  document.getElementById(NS+"_overlay").remove();
 },
 
-// ✅ WSP RANKING (CORRECT)
+// ✅ FIXED SUPPORT SCAN
 async scan(){
 
  for(let i=0;i<200;i++){
@@ -132,8 +131,6 @@ async scan(){
    if(this.seen.has(player)) return;
 
    this.seen.add(player);
-
-   console.log("✅ MATCH:", player, "→", tribeRaw);
 
    this.results.push({
     rank: parseInt(td[0].innerText),
@@ -168,7 +165,6 @@ sort(data){
  });
 },
 
-// ✅ RESULT (wie dein Daily Script)
 buildUI(){
 
  let data = [...this.results];
@@ -176,6 +172,98 @@ buildUI(){
  if(this.top) data = data.slice(0,this.top);
 
  this.sort(data);
+
+ const colors=["#2563eb","#16a34a","#dc2626","#d97706"];
+ let map={}, idx=0;
+
+ const getColor=a=>{
+  if(!map[a]){ map[a]=colors[idx%colors.length]; idx++; }
+  return map[a];
+ };
+
+ let rows = data.map((p,i)=>{
+
+  const c = getColor(p.ally);
+
+  return `
+  <tr style="background:${c}20">
+   <td>${i+1}</td>
+   <td>${p.rank}</td>
+   <td>
+     <a href="${baseUrl}?screen=info_player&name=${encodeURIComponent(p.player)}"
+        target="_blank"
+        style="color:${c};font-weight:bold;text-decoration:none">
+        ${p.player}
+     </a>
+   </td>
+   <td style="color:${c};font-weight:bold">${p.ally}</td>
+   <td>${p.points}</td>
+   <td>${p.time}</td>
+  </tr>`;
+ }).join("");
+
+ document.getElementById(NS+"_result")?.remove();
+
+ const d = document.createElement("div");
+ d.id = NS+"_result";
+
+ d.innerHTML = `
+ <div style="position:fixed;inset:0;background:rgba(2,6,23,.8);
+ display:flex;align-items:center;justify-content:center">
+
+  <div style="
+   width:90%;
+   max-width:1000px;
+   max-height:80vh;
+   background:white;
+   border-radius:12px;
+   overflow:hidden;
+  ">
+
+   <div style="background:#2563eb;color:white;padding:10px;
+    display:flex;justify-content:space-between">
+    Results
+    <button id="${NS}_close" style="background:none;border:none;color:white">✕</button>
+   </div>
+
+   <div style="padding:10px;overflow:auto;max-height:70vh">
+
+    <div style="display:flex;gap:5px;margin-bottom:6px">
+     <button data-s="rank">Rank</button>
+     <button data-s="player">Player</button>
+     <button data-s="ally">Ally</button>
+     <button data-s="points">Points</button>
+     <button data-s="time">Time</button>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse">
+     <tr style="background:#eee">
+      <th>#</th><th>Rank</th><th>Player</th><th>Ally</th><th>Points</th><th>Time</th>
+     </tr>
+     ${rows}
+    </table>
+
+    <div style="margin-top:10px;display:flex;gap:5px">
+     <button id="${NS}_copy">Copy</button>
+     <button id="${NS}_download">Download</button>
+    </div>
+
+   </div>
+  </div>
+ </div>`;
+
+ document.body.appendChild(d);
+
+ document.getElementById(NS+"_close").onclick = ()=>d.remove();
+
+ document.querySelectorAll("[data-s]").forEach(btn=>{
+  btn.onclick = ()=>{
+   const key = btn.dataset.s;
+   this.sortDir = (this.sortKey===key && this.sortDir==="desc") ? "asc" : "desc";
+   this.sortKey = key;
+   this.buildUI();
+  };
+ });
 
  let txt="[table]\n";
  txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
@@ -186,12 +274,18 @@ buildUI(){
 
  txt+="[/table]";
 
- // ✅ DOWNLOAD (wie du es zuletzt wolltest)
- const blob = new Blob([txt], {type:"text/plain"});
- const a = document.createElement("a");
- a.href = URL.createObjectURL(blob);
- a.download = "support_ranking.txt";
- a.click();
+ document.getElementById(NS+"_copy").onclick = ()=>{
+  navigator.clipboard.writeText(txt);
+ };
+
+ document.getElementById(NS+"_download").onclick = ()=>{
+  const blob = new Blob([txt], {type:"text/plain"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="support_ranking.txt";
+  a.click();
+ };
+
 }
 
 };
