@@ -1,0 +1,206 @@
+(async function () {
+
+try {
+
+const NS = "rzb";
+const baseUrl = location.origin + "/game.php";
+
+const $ = id => document.getElementById(NS + id);
+
+const cleanPlayer = str => str.replace(/\u00A0/g," ").trim();
+const normTribe = str => str.replace(/\s/g,"").trim();
+
+const Script = {
+
+results: [],
+seen: new Set(),
+targets: [],
+top: null,
+min: 0,
+sortKey: "points",
+sortDir: "desc",
+
+// ✅ START UI (wie dein Daily Script)
+init(){
+
+ document.getElementById(NS+"_overlay")?.remove();
+
+ const el = document.createElement("div");
+ el.id = NS+"_overlay";
+
+ el.innerHTML = `
+ <div style="position:fixed;inset:0;background:rgba(2,6,23,.75);
+ display:flex;align-items:center;justify-content:center;z-index:999999">
+  <div style="width:420px;background:white;border-radius:12px;border:2px solid #2563eb;overflow:hidden">
+
+   <div style="background:linear-gradient(#0b1f4d,#2563eb);
+    color:white;padding:10px;display:flex;justify-content:space-between">
+    Support Ranking
+    <button id="${NS}_close_start" style="background:none;border:none;color:white;font-size:16px">✕</button>
+   </div>
+
+   <div style="padding:10px">
+
+    <textarea id="${NS}_input" placeholder=":G:\n~G~"
+     style="width:100%;height:80px;border-radius:6px;border:1px solid #ccc;padding:6px"></textarea>
+
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <input id="${NS}_top" placeholder="Top X" style="flex:1;padding:6px">
+      <input id="${NS}_min" placeholder="Min Points" style="flex:1;padding:6px">
+    </div>
+
+    <button id="${NS}_start" style="
+      margin-top:8px;width:100%;padding:8px;
+      background:#2563eb;color:white;border:none;border-radius:6px;font-weight:bold">
+      START
+    </button>
+
+    <div style="background:#eee;margin-top:8px">
+      <div id="${NS}_bar" style="height:6px;background:#2563eb;width:0"></div>
+    </div>
+
+    <div id="${NS}_log" style="font-size:12px;margin-top:6px"></div>
+
+   </div>
+  </div>
+ </div>`;
+
+ document.body.appendChild(el);
+
+ $( "_start").onclick = ()=>this.start();
+ document.getElementById(NS+"_close_start").onclick = ()=>el.remove();
+},
+
+log(t){ $( "_log").innerText = t },
+prog(p){ $( "_bar").style.width = p+"%" },
+
+async fetchDoc(url){
+ const r = await fetch(url);
+ if(r.status === 429){
+  await new Promise(r=>setTimeout(r,1500));
+  return this.fetchDoc(url);
+ }
+ return new DOMParser().parseFromString(await r.text(),"text/html");
+},
+
+async start(){
+
+ this.results = [];
+ this.seen = new Set();
+
+ this.targets = $( "_input").value
+  .split(/\n|\s/)
+  .map(normTribe)
+  .filter(Boolean);
+
+ this.top = parseInt($( "_top").value) || null;
+ this.min = parseInt($( "_min").value) || 0;
+
+ await this.scan();
+
+ document.getElementById(NS+"_overlay").remove();
+},
+
+// ✅ WSP RANKING (CORRECT)
+async scan(){
+
+ for(let i=0;i<200;i++){
+
+  if(this.top && this.results.length >= this.top) break;
+
+  const doc = await this.fetchDoc(
+   `${baseUrl}?screen=ranking&mode=kill_player&type=support&offset=${i*25}`
+  );
+
+  const rows = doc.querySelectorAll("#ranking_table tr");
+
+  if(rows.length <= 1) break;
+
+  rows.forEach(r=>{
+
+   const td = r.querySelectorAll("td");
+   if(td.length < 5) return;
+
+   const points = parseInt(td[3].innerText.replace(/\./g,''));
+   if(points < this.min) return;
+
+   const player = cleanPlayer(td[1].textContent);
+   const tribeRaw = td[2].textContent.trim();
+   const tribe = normTribe(tribeRaw);
+
+   if(!this.targets.some(t=>tribe.includes(t))) return;
+   if(this.seen.has(player)) return;
+
+   this.seen.add(player);
+
+   console.log("✅ MATCH:", player, "→", tribeRaw);
+
+   this.results.push({
+    rank: parseInt(td[0].innerText),
+    player,
+    ally: tribeRaw,
+    points,
+    time: td[4].innerText
+   });
+
+  });
+
+  this.prog((i/200)*100);
+  this.log(`Found: ${this.results.length}`);
+
+  await new Promise(r=>setTimeout(r,250));
+ }
+
+ this.buildUI();
+},
+
+sort(data){
+
+ data.sort((a,b)=>{
+  const A = a[this.sortKey];
+  const B = b[this.sortKey];
+
+  if(typeof A === "string"){
+   return this.sortDir==="asc" ? A.localeCompare(B) : B.localeCompare(A);
+  }
+
+  return this.sortDir==="asc" ? A-B : B-A;
+ });
+},
+
+// ✅ RESULT (wie dein Daily Script)
+buildUI(){
+
+ let data = [...this.results];
+
+ if(this.top) data = data.slice(0,this.top);
+
+ this.sort(data);
+
+ let txt="[table]\n";
+ txt+="[**]LP[||]Rank[||]Player[||]Ally[||]Points[||]Time[/**]\n";
+
+ data.forEach((p,i)=>{
+  txt+=`[*][b]${i+1}[/b][|]${p.rank}[|][player]${p.player}[/player][|][ally]${p.ally}[/ally][|][b]${p.points}[/b][|]${p.time}\n`;
+ });
+
+ txt+="[/table]";
+
+ // ✅ DOWNLOAD (wie du es zuletzt wolltest)
+ const blob = new Blob([txt], {type:"text/plain"});
+ const a = document.createElement("a");
+ a.href = URL.createObjectURL(blob);
+ a.download = "support_ranking.txt";
+ a.click();
+}
+
+};
+
+Script.init();
+
+} catch(e){
+ console.error(e);
+ alert(e.message);
+}
+
+})();
