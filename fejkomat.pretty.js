@@ -180,8 +180,12 @@
       }
     }
     async fetch_from_server_map_files(t, e) {
-      const a = await fetch(`map/${t}.txt`),
-        i = new Date(a.headers.get("last-modified")),
+      const a = await fetch(`map/${t}.txt`);
+      if (!a.ok)
+        throw new Error(
+          `Blad pobierania map/${t}.txt: HTTP ${a.status} ${a.statusText}`,
+        );
+      const i = new Date(a.headers.get("last-modified")),
         s = (await a.text())
           .split("\n")
           .filter((t) => t.trim().length > 0)
@@ -198,8 +202,12 @@
       return { name: "", expiration_time_s: r, value: n };
     }
     async fetch_from_server_config(t) {
-      const e = await fetch(`interface.php?func=get_${t}`),
-        a = await e.text(),
+      const e = await fetch(`interface.php?func=get_${t}`);
+      if (!e.ok)
+        throw new Error(
+          `Blad pobierania interface.php?func=get_${t}: HTTP ${e.status} ${e.statusText}`,
+        );
+      const a = await e.text(),
         i = this.get_json_from_xml_string(a);
       return {
         name: "",
@@ -317,7 +325,7 @@
       "W puli wiosek nie pozosta\u0142y cele mieszcz\u0105ce si\u0119 w dozwolonym przedziale punktowym (blokada ataku 20%)",
   };
   class g {
-    static handle_error(t, e) {
+    static handle_error(t, e, r) {
       if (t instanceof p)
         (UI.ErrorMessage(t.message), t.href && (location.href = t.href));
       else {
@@ -325,9 +333,28 @@
         const a = document.createElement("h2");
         a.textContent = "WTF - What a Terrible Failure";
         const i = document.createElement("textarea");
-        ((i.rows = 12),
-          (i.cols = 100),
-          (i.textContent = t.toString() + "\n\n" + t.stack));
+        ((i.rows = 18), (i.cols = 110));
+        const lines = [
+          "Czas: " + new Date().toString(),
+          "URL: " + location.href,
+          "Ekran: " + ((window.game_data && game_data.screen) || "?"),
+          "Blad: " +
+            ((t && t.name) || typeof t) +
+            ": " +
+            (null != t && null != t.message ? t.message : t),
+          "Stack: " +
+            (t && t.stack
+              ? t.stack
+              : "(brak stosu wywolan - to zwykle oznacza blad sieciowy/przegladarki, a nie wyjatek rzucony wprost w kodzie tego skryptu)"),
+        ];
+        if (r && r.length) {
+          (lines.push(""),
+            lines.push(
+              "Inne bledy/zdarzenia zaobserwowane w trakcie dzialania skryptu (moga, ale nie musza byc powiazane):",
+            ));
+          for (const t of r) lines.push("- " + t);
+        }
+        i.textContent = lines.join("\n");
         const s = document.createElement("a");
         ((s.href = e), (s.textContent = "W\u0105tek na forum"));
         const n = document.createElement("div");
@@ -345,11 +372,34 @@
       }
     }
     static async run(t, e) {
+      const sideErrors = [],
+        onErr = (e) => {
+          try {
+            sideErrors.push(
+              "window.onerror: " +
+                (e.message || e.error) +
+                (e.filename ? " @ " + e.filename + ":" + e.lineno : ""),
+            );
+          } catch (t) {}
+        },
+        onRej = (e) => {
+          try {
+            sideErrors.push(
+              "unhandledrejection: " +
+                ((e.reason && e.reason.message) || e.reason),
+            );
+          } catch (t) {}
+        };
+      (window.addEventListener("error", onErr),
+        window.addEventListener("unhandledrejection", onRej));
       try {
-        const t = await e();
-        null != t && UI.SuccessMessage(t);
+        const r = await e();
+        null != r && UI.SuccessMessage(r);
       } catch (e) {
-        this.handle_error(e, t);
+        this.handle_error(e, t, sideErrors);
+      } finally {
+        (window.removeEventListener("error", onErr),
+          window.removeEventListener("unhandledrejection", onRej));
       }
     }
   }
