@@ -22,6 +22,13 @@
  *             - Fixed bug: try_fill_troops previously required exactly 5 scouts (5==a.spy) to
  *               treat a scout-only template as fulfilled; it now accepts >=5, matching upstream
  *               Faking 4.3.0.
+ *             - Fixed the "20% blockade": some worlds (this one included) enforce a hard rule via
+ *               config.casual.attack_block/attack_block_max ("Gracze moga sie atakowac nawzajem
+ *               tylko wowczas gdy ich roznica punktowa nie przekracza 20% punktow mniejszego
+ *               gracza"). This is separate from config.moral and was not filtered before, so the
+ *               script could select targets the game would then reject. Targets outside your
+ *               points band are now excluded (pool_apply_attack_block), throwing
+ *               ERROR_POOL_EMPTY_ATTACK_BLOCK when nothing in range remains.
  *
  */ (() => {
   "use strict";
@@ -304,6 +311,8 @@
       "W puli wiosek pozosta\u0142y wioski, na kt\xf3re atak doszed\u0142by poza wybranymi przedzia\u0142ami czasowymi",
     ERROR_POOL_EMPTY_MORALE:
       "W puli wiosek nie pozosta\u0142y \u017cadne cele z wybran\u0105 moral\u0105",
+    ERROR_POOL_EMPTY_ATTACK_BLOCK:
+      "W puli wiosek nie pozosta\u0142y cele mieszcz\u0105ce si\u0119 w dozwolonym przedziale punktowym (blokada ataku 20%)",
   };
   class g {
     static handle_error(t, e) {
@@ -840,6 +849,7 @@
           this.game_data,
           this.settings,
         ).apply_filter(a, t)),
+        (a = this.pool_apply_attack_block(a)),
         (a = this.pool_apply_morale(a)));
       const s = a[this.data_provider.get_random_number(0, a.length)],
         n = h.get_troops_speed(this.world_info, t);
@@ -867,6 +877,24 @@
         )).length
       )
         throw new p(u.ERROR_POOL_EMPTY_MORALE);
+      return t;
+    }
+    pool_apply_attack_block(t) {
+      const e = this.world_info.config.casual;
+      if (!e || "1" !== e.attack_block) return t;
+      const a = Number(e.attack_block_max);
+      if (!a || a <= 0) return t;
+      const i = Number(this.game_data.player.points),
+        s = i / a,
+        n = i * a;
+      if (
+        0 ===
+        (t = t.filter((t) => {
+          const e = Number(t[6]);
+          return e > 0 && e >= s && e <= n;
+        })).length
+      )
+        throw new p(u.ERROR_POOL_EMPTY_ATTACK_BLOCK);
       return t;
     }
     pool_apply_troops_constraints(t, e) {
