@@ -28,7 +28,9 @@
  *               gracza"). This is separate from config.moral and was not filtered before, so the
  *               script could select targets the game would then reject. Targets outside your
  *               points band are now excluded (pool_apply_attack_block), throwing
- *               ERROR_POOL_EMPTY_ATTACK_BLOCK when nothing in range remains.
+ *               ERROR_POOL_EMPTY_ATTACK_BLOCK when nothing in range remains. Barbarian villages
+ *               are always exempt from both this check and pool_apply_morale, matching how the
+ *               game itself treats barbarian attacks (no points-band or morale restriction).
  *
  */ (() => {
   "use strict";
@@ -873,7 +875,8 @@
       if (
         0 ===
         (t = t.filter(
-          (t) => Number(t[6]) >= Number(this.game_data.player.points),
+          (t) =>
+            t[2] === b || Number(t[6]) >= Number(this.game_data.player.points),
         )).length
       )
         throw new p(u.ERROR_POOL_EMPTY_MORALE);
@@ -890,6 +893,7 @@
       if (
         0 ===
         (t = t.filter((t) => {
+          if (t[2] === b) return !0;
           const e = Number(t[6]);
           return e > 0 && e >= s && e <= n;
         })).length
